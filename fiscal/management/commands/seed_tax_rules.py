@@ -37,7 +37,7 @@ class Command(BaseCommand):
                     "loss_carryforward_enabled": True,
                     "fx_cash_policy": {"non_bearing_cash_exempt": True},
                     "quote_type": "VENDA",
-                    "confirmed": False,
+                    "confirmed": True,
                     "effective_from": f"{year}-01-01",
                     "effective_until": f"{year}-12-31",
                     "notes": "Lei 14.754/2023 — ver ADR-0003",

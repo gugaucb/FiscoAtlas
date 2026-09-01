@@ -5,6 +5,7 @@ if [ ! -s "$DB" ]; then
     echo "Banco novo: aplicando migrations..."
     python manage.py migrate --noinput
     python manage.py migrate --database=vault --noinput
+    python manage.py seed_tax_rules
 else
     echo "Banco existente detectado; iniciar sem migrations."
     echo "Para aplicar migrations novas, desbloqueie a aplicação e rode:"
