@@ -2,5 +2,21 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .git/
-backups/
+.gitignore
+.venv/
 tests/
+backups/
+# dados do usuário — nunca entram na imagem
+documents/
+*.enc
+*.sqlite3
+*.sqlite3-journal
+# ambiente e infra
+.env
+.env.*
+Dockerfile*
+compose.yaml
+compose.*.yaml
+docker-compose*.yml
+.scratch/
+*.log

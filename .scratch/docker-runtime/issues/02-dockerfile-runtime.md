@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (caminhos-env).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Multi-stage: stage de dependências compila sqlcipher3; stage runtime só runtime (libsqlcipher compartilhada + requirements.txt, sem requirements-dev)
 - [ ] Usuário não-root com posse dos diretórios graváveis (/data e subpastas)
