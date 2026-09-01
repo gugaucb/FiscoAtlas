@@ -2,7 +2,7 @@ import os
 import dj_database_url
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-not-secret")
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [

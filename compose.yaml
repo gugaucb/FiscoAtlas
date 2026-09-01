@@ -10,6 +10,7 @@ services:
       VAULT_DB_PATH: /data/vault.sqlite3
       DOCUMENT_STORAGE_PATH: /data/documents
       SECRET_KEY: ${SECRET_KEY:-dev-only-not-secret}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
     volumes:
       - app_data:/data
     healthcheck:

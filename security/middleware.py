@@ -23,6 +23,12 @@ class VaultLockMiddleware:
             return self.get_response(request)
         if not request.session.get(UNLOCKED_KEY):
             return redirect("/bloqueado/")
+        if self._sem_chave_em_memoria():
+            # reinício do container: cookie diz desbloqueado, mas a VaultKey
+            # só vive em memória — sessão não vale desbloqueio.
+            request.session.pop(UNLOCKED_KEY, None)
+            request.session.cycle_key()
+            return redirect("/bloqueado/")
         if self._expired(request):
             request.session.pop(UNLOCKED_KEY, None)
             request.session.cycle_key()
@@ -30,6 +36,11 @@ class VaultLockMiddleware:
             return redirect("/bloqueado/")
         request.session[LAST_ACTIVITY_KEY] = timezone.now().isoformat()
         return self.get_response(request)
+
+    def _sem_chave_em_memoria(self) -> bool:
+        from security import state
+
+        return state.get_vault_key() is None
 
     def _expired(self, request) -> bool:
         from django.conf import settings as dj_settings
