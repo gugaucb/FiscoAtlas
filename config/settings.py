@@ -36,7 +36,7 @@ DATABASES = {
     "default": {**_DATABASE, "ENGINE": "security.sqlcipher_backend"},
     # Vault de chaves: só material wrappado e parâmetros KDF (nada plaintext sensível);
     # precisa ser acessível mesmo com a aplicação bloqueada.
-    "vault": {"ENGINE": "django.db.backends.sqlite3", "NAME": "vault.sqlite3"},
+    "vault": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.environ.get("VAULT_DB_PATH", "vault.sqlite3")},
 }
 # Em testes o vault mora no banco de teste default (mesma base, sem alias separado)
 import sys
@@ -54,6 +54,7 @@ TIME_ZONE = "America/Sao_Paulo"
 
 STATIC_URL = "static/"
 AUTO_LOCK_TIMEOUT_MINUTES = 10  # bloqueio automático por inatividade
+DOCUMENT_STORAGE_PATH = os.environ.get("DOCUMENT_STORAGE_PATH", "documents")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 TEMPLATES = [{
