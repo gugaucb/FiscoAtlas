@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: fiscoatlas:local
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/db.sqlite3
+      VAULT_DB_PATH: /data/vault.sqlite3
+      DOCUMENT_STORAGE_PATH: /data/documents
+      SECRET_KEY: ${SECRET_KEY:-dev-only-not-secret}
+    volumes:
+      - app_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/bloqueado/', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+volumes:
+  app_data:

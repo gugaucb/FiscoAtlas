@@ -22,4 +22,4 @@ WORKDIR /app
 COPY --chown=app:app . .
 USER app
 EXPOSE 8000
-CMD ["python", "manage.py", "runsecure", "0.0.0.0:8000"]
+ENTRYPOINT ["./entrypoint.sh"]

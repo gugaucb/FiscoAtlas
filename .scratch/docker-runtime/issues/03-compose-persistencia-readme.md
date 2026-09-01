@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (Dockerfile).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] compose.yaml: serviço app, porta 8000, restart unless-stopped, env via .env.example, healthcheck em /bloqueado/ (200 mesmo travado), usuário não-root
 - [ ] Volumes: app_data:/data (banco + vault) e app_documents:/data/documents; compose de dev Postgres removido

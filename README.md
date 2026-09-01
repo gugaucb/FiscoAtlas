@@ -38,6 +38,86 @@ pytest
 
 Os testes E2E usam Playwright (`pytest tests/e2e/`).
 
+## Executando com Docker
+
+### Pré-requisitos
+
+- Docker
+- Docker Compose
+
+### Primeira execução
+
+```bash
+cp .env.example .env   # defina APP_PORT e SECRET_KEY
+docker compose up -d --build
+```
+
+A aplicação sobe travada em `http://localhost:8000` (ou a porta em `APP_PORT`).
+Configure a senha em `/configurar/` e desbloqueie em `/bloqueado/`.
+
+### Ver logs
+
+```bash
+docker compose logs -f app
+```
+
+### Parar
+
+```bash
+docker compose down
+```
+
+### Reconstruir
+
+```bash
+docker compose up -d --build
+```
+
+### Ver status
+
+```bash
+docker compose ps
+```
+
+### Reiniciar
+
+```bash
+docker compose restart app
+```
+
+### Persistência
+
+Os dados ficam no volume Docker `app_data`, montado em `/data` no container:
+
+- `/data/db.sqlite3` — banco principal (cifrado com SQLCipher)
+- `/data/vault.sqlite3` — chaves encapsuladas e log de auditoria
+- `/data/documents/` — documentos anexos cifrados
+
+Nem `docker compose down` nem `up -d --build` apagam esses dados.
+
+### Backup
+
+Sempre com a aplicação parada (evita copiar o SQLite aberto/inconsistente):
+
+```bash
+docker compose stop app
+docker run --rm -v fiscoatlas_app_data:/data -v "$PWD:/backup" python:3.11-slim-bookworm \
+    tar czf /backup/backup-fiscoatlas.tgz /data
+docker compose start app
+```
+
+### Restaurar
+
+```bash
+docker compose down
+docker run --rm -v fiscoatlas_app_data:/data -v "$PWD:/backup" python:3.11-slim-bookworm \
+    sh -c "rm -rf /data/* && tar xzf /backup/backup-fiscoatlas.tgz -C /"
+docker compose up -d
+```
+
+Alternativa dentro da aplicação (com ela desbloqueada): comando
+`backup_encrypted` / tela de documentos — produz um zip cifrado.
+
 ## Licença
 
 GPL-3.0 — veja [LICENSE](LICENSE).
