@@ -1,0 +1,92 @@
+from decimal import Decimal
+
+import django.forms as forms
+from ledger.models import Asset, FinancialEvent
+
+LABELS = {
+    "event_type": "Tipo de evento",
+    "account": "Conta",
+    "asset_ticker": "Ativo (ticker)",
+    "trade_date": "Data da operação",
+    "quantity": "Quantidade",
+    "price_usd": "Preço (USD)",
+    "per_share_usd": "Valor por ação (USD)",
+    "fee_usd": "Taxas (USD)",
+    "tax_usd": "Imposto retido (USD)",
+    "amount_usd": "Valor (USD)",
+    "notes": "Observações",
+}
+
+REQUIRED_BY_TYPE = {
+    "APORTE": ["account", "trade_date", "amount_usd"],
+    "WITHDRAWAL": ["account", "trade_date", "amount_usd"],
+    "JUROS": ["account", "trade_date", "amount_usd"],
+    "FEE": ["account", "trade_date", "amount_usd"],
+    "TAX_WITHHELD": ["account", "trade_date", "amount_usd"],
+    "BUY": ["account", "asset_ticker", "trade_date", "quantity", "price_usd"],
+    "SELL": ["account", "asset_ticker", "trade_date", "quantity", "price_usd"],
+    "DIVIDEND": ["account", "asset_ticker", "trade_date", "quantity", "per_share_usd"],
+}
+
+
+class EventForm(forms.ModelForm):
+    asset_ticker = forms.CharField(max_length=32, required=False, label=LABELS["asset_ticker"])
+    per_share_usd = forms.DecimalField(required=False, label=LABELS["per_share_usd"])
+    ptax_manual = forms.DecimalField(
+        required=False, max_digits=10, decimal_places=6, min_value=Decimal("0.01"),
+        label="PTAX manual (opcional)",
+        help_text="Informe se o BCB não responder. Consulte o fechamento PTAX no site do BC.",
+    )
+    ptax_reason = forms.CharField(
+        max_length=255, required=False, strip=True,
+        label="Motivo da PTAX manual",
+        help_text="Ex.: API do BCB indisponível em 31/12/2026.",
+    )
+
+    class Meta:
+        model = FinancialEvent
+        fields = ["event_type", "account", "trade_date", "quantity",
+                  "price_usd", "fee_usd", "tax_usd", "amount_usd", "notes"]
+        labels = {"event_type": LABELS["event_type"], "account": LABELS["account"],
+                  "trade_date": LABELS["trade_date"], "quantity": LABELS["quantity"],
+                  "price_usd": LABELS["price_usd"], "fee_usd": LABELS["fee_usd"],
+                  "tax_usd": LABELS["tax_usd"], "amount_usd": LABELS["amount_usd"],
+                  "notes": LABELS["notes"]}
+        widgets = {"trade_date": forms.DateInput(attrs={"type": "date"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from ledger.models import BrokerAccount
+        self.fields["account"].queryset = BrokerAccount.objects.filter(active=True)
+        self.fields["account"].label_from_instance = lambda a: str(a)
+        for f in self.fields.values():
+            f.required = False
+        if self.is_bound and self.data.get("event_type"):
+            self.fields["event_type"].required = True
+
+    def clean_asset_ticker(self):
+        ticker = (self.cleaned_data.get("asset_ticker") or "").strip().upper()
+        if not ticker:
+            return None
+        asset, _ = Asset.objects.get_or_create(
+            ticker=ticker,
+            defaults={"description": ticker, "asset_type": "STOCK", "country_code": "US"},
+        )
+        return asset
+
+    def clean(self):
+        cleaned = super().clean()
+        etype = cleaned.get("event_type")
+        if not etype:
+            self.add_error("event_type", "Selecione o tipo de evento.")
+            return cleaned
+        for name in REQUIRED_BY_TYPE.get(etype, []):
+            if name == "asset_ticker":
+                value = cleaned.get("asset_ticker")
+            else:
+                value = cleaned.get(name)
+            if value in (None, ""):
+                self.add_error(name, "Campo obrigatório para este tipo de evento.")
+        if cleaned.get("ptax_manual") and not (cleaned.get("ptax_reason") or "").strip():
+            self.add_error("ptax_reason", "Informe o motivo ao usar PTAX manual.")
+        return cleaned

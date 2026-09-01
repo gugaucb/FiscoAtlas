@@ -1,0 +1,50 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Contas (caixas)</h1>
+<p class="page-sub">Cadastre caixas separados para conta de investimento e conta corrente. Contas remuneradas aceitam JUROS/rendimento.</p>
+<div class="card">
+  <h2>Nova conta</h2>
+  {% if form.non_field_errors %}<p class="errors">{{ form.non_field_errors }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn">Criar conta</button>
+  </form>
+</div>
+
+<h2>Contas cadastradas</h2>
+<table>
+  <thead>
+  <tr><th>Caixa</th><th>Corretora</th><th>Número</th><th>Tipo</th><th>Remuneração</th><th>Situação</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for a in accounts %}
+  <tr>
+    <td><strong>{{ a.name|default:"—" }}</strong></td>
+    <td>{{ a.broker_name }}</td>
+    <td class="num">{{ a.account_number }}</td>
+    <td>{{ a.get_account_type_display }}</td>
+    <td>{% if a.is_interest_bearing %}<span class="badge income">remunerada</span>{% else %}<span class="badge">não remunerada</span>{% endif %}</td>
+    <td>{% if a.active %}<span class="badge">ativa</span>{% else %}<span class="badge sell">desativada</span>{% endif %}</td>
+    <td>
+      <a href="{% url 'account-edit' a.pk %}">editar</a>
+      {% if a.active %}
+      <form method="post" action="{% url 'account-deactivate' a.pk %}" style="display:inline" onsubmit="return confirm('Desativar esta conta? O histórico será preservado.')">
+        {% csrf_token %}
+        <button type="submit" class="btn secondary" style="padding:.15rem .6rem;font-size:.85rem">desativar</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="7" class="empty">Nenhuma conta cadastrada.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

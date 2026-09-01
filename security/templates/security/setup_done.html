@@ -1,0 +1,16 @@
+{% extends "security/base.html" %}
+{% block title %}Recovery key{% endblock %}
+{% block content %}
+<h1>Recovery key</h1>
+<div class="alert">
+  <p style="margin:0">Guarde esta recovery key em local seguro (papel, cofre de
+  senhas). Ela é a única forma de recuperar o acesso se você esquecer a senha.</p>
+</div>
+<div class="card">
+  <p class="key"><strong>{{ recovery }}</strong></p>
+  <p class="hint"><em>Esta chave não será exibida novamente. Se você perder sua
+  senha, o dispositivo e a Recovery Key, os dados poderão se tornar
+  irrecuperáveis.</em></p>
+  <a href="/" class="btn">Ir para o sistema</a>
+</div>
+{% endblock %}

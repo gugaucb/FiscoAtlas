@@ -1,0 +1,21 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Documentos</h1>
+<p class="page-sub">Arquivos armazenados cifrados (AES-256-GCM) — informe, extrato, operações.</p>
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+  <label for="file">Importar PDF/CSV</label>
+  <input type="file" name="file" id="file" accept=".pdf,.csv" required>
+  <button type="submit" style="margin-top:1rem">Importar</button>
+</form>
+<table>
+  <thead><tr><th>Documento</th><th>Ações</th></tr></thead>
+  <tbody>
+  {% for d in documents %}
+  <tr><td>{{ d.name }}</td><td><a href="{% url 'document-download' d.id %}" class="btn secondary">Baixar</a></td></tr>
+  {% empty %}
+  <tr><td colspan="2" class="empty">Nenhum documento importado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

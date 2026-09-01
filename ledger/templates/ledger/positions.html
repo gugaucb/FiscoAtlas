@@ -1,0 +1,23 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Posições</h1>
+<p class="page-sub">Custo fiscal consolidado por ativo (inclui posição de abertura).</p>
+<table>
+  <thead>
+  <tr><th>Ativo</th><th>Descrição</th><th>Quantidade</th><th>Custo médio USD</th><th>Custo total BRL</th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+  <tr>
+    <td><strong>{{ row.asset.ticker }}</strong></td>
+    <td>{{ row.asset.description }}</td>
+    <td class="num">{{ row.quantity }}</td>
+    <td class="money">{{ row.avg_cost_usd }}</td>
+    <td class="money">{{ row.cost_brl_total }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5" class="empty">Nenhuma posição.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

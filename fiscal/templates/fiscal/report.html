@@ -1,0 +1,169 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+{% if not report %}
+<h1>Relatório DIRPF {{ year }}</h1>
+<div class="card">
+  <h2>PTAX de fechamento 31/12/{{ year }}</h2>
+  <p class="page-sub">O Banco Central ainda não tem cotação para 31/12/{{ year }}.
+     Informe a PTAX venda de fechamento (consulte o <a href="https://www.bcb.gov.br/estabilidadefinanceira/fechamentoptax" target="_blank" rel="noopener">Banco Central</a>)
+     para gerar o relatório.</p>
+  <form method="post" action="{% url 'report-ptax' year %}">
+    {% csrf_token %}
+    <div class="form-row">
+      <label for="id_rate">{{ ptax_form.rate.label }}</label>
+      {{ ptax_form.rate }}
+      {% if ptax_form.rate.errors %}<div class="errors">{{ ptax_form.rate.errors }}</div>{% endif %}
+    </div>
+    <div class="form-row">
+      <label for="id_motivo">{{ ptax_form.motivo.label }}</label>
+      {{ ptax_form.motivo }}
+      {% if ptax_form.motivo.errors %}<div class="errors">{{ ptax_form.motivo.errors }}</div>{% endif %}
+    </div>
+    <button type="submit" class="btn">Salvar PTAX e gerar relatório</button>
+  </form>
+</div>
+{% else %}
+<h1>Relatório DIRPF {{ report.year }}
+  {% if report.closing.is_closed %}
+  <span class="badge ok">Ano fechado{% if report.closing.closed_at %} em {{ report.closing.closed_at|date:"d/m/Y H:i" }}{% endif %}</span>
+  {% else %}
+  <span class="badge">Ano em aberto</span>
+  {% endif %}
+</h1>
+<p class="page-sub">Exercício {{ report.exercise }} · Ano-Calendário {{ report.year }} · Lei 14.754/2023</p>
+{% if not report.closing.prev_closed %}
+<div class="card" role="alert" style="border-left:4px solid #b45309">
+  <strong>Atenção:</strong> o ano-calendário {{ report.year|add:"-1" }} não está fechado. O saldo de
+  prejuízo a compensar herdado pode estar incompleto — feche o ano anterior na tela de
+  apuração antes de considerar estes valores como definitivos.
+</div>
+{% endif %}
+<div class="btn-row">
+  <a href="{% url 'report-pdf' report.year %}" class="btn">Baixar PDF</a>
+  <a href="{% url 'memoria-pdf' report.year %}" class="btn secondary">Memória de cálculo (PDF)</a>
+</div>
+<p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})</em></p>
+
+<h2>1 — Identificação da instituição</h2>
+<ul>
+  {% for i in report.identification %}
+  <li>{{ i.broker_name }} — conta {{ i.account_number }} <span class="badge">{{ i.country_code }}</span></li>
+  {% empty %}
+  <li class="empty">Nenhuma conta identificada.</li>
+  {% endfor %}
+</ul>
+
+<h2>2 — Beneficiário</h2>
+<div class="card">
+  <p><strong>Nome:</strong> {{ report.beneficiary.name }}<br>
+     <strong>CPF:</strong> <span class="num">{{ report.beneficiary.cpf }}</span></p>
+</div>
+
+<h2>3 — Bens e Direitos / Saldos</h2>
+<table>
+  <thead>
+  <tr><th>Corretora</th><th>Saldo USD 31/12</th><th>Valor para declaração (BRL)</th></tr>
+  </thead>
+  <tbody>
+  {% for c in report.cash %}
+  <tr><td>{{ c.account.broker_name }} <span class="badge">conta {{ c.account.account_number }}</span></td>
+      <td class="money">{{ c.balance_usd }}</td><td class="money">{{ c.balance_brl }}</td></tr>
+  {% empty %}
+  <tr><td colspan="3" class="empty">Nenhum saldo em 31/12.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>4 — Ativos em custódia</h2>
+{% for a in report.assets %}
+<div class="card">
+  <h3 style="font-size:1.1rem">{{ a.ticker }} — {{ a.description|upper }}</h3>
+  <p>
+    <span class="badge buy">Grupo/Código: {{ a.grupo_codigo }}</span>
+    <span class="badge">Localização: {{ a.country_code_rfb }} – {{ a.country_name }}</span>
+    <span class="badge">Tipo: {{ a.asset_type }}</span>
+  </p>
+  <table>
+    <thead>
+    <tr><th>Quantidade</th><th>Custo aquisição USD</th><th>PTAX média</th><th>Custo fiscal BRL</th></tr>
+    </thead>
+    <tbody>
+    <tr><td class="num">{{ a.quantity }}</td><td class="money">{{ a.cost_usd_total }}</td><td class="num">{{ a.ptax_media }}</td><td class="money">{{ a.cost_brl_total }}</td></tr>
+    <tr><th scope="row">Situação 31/12/{{ report.year|add:"-1" }}</th><td colspan="3" class="money">R$ {{ a.prev_cost_brl }}</td></tr>
+    <tr><th scope="row">Situação 31/12/{{ report.year }}</th><td colspan="3" class="money">R$ {{ a.cost_brl_total }}</td></tr>
+    </tbody>
+  </table>
+  <h4>Aplicação financeira</h4>
+  <table>
+    <tbody>
+    <tr><th scope="row">Dividendos</th><td class="money">R$ {{ a.dividends_brl }}</td></tr>
+    <tr><th scope="row">Ganhos em alienações</th><td class="money positive">R$ {{ a.gains_brl }}</td></tr>
+    <tr><th scope="row">Prejuízos em alienações</th><td class="money negative">-R$ {{ a.losses_brl }}</td></tr>
+    <tr><th scope="row">Imposto pago no exterior</th><td class="money">R$ {{ a.withholding_brl }}</td></tr>
+    </tbody>
+  </table>
+  <p><em class="note">Discriminação sugerida: {{ a.discriminacao }}</em></p>
+</div>
+{% empty %}
+<p class="empty">Nenhuma posição em 31/12.</p>
+{% endfor %}
+
+<h2>5 — Rendimentos e Ganhos (consolidado)</h2>
+<div class="card">
+  <table>
+    <tbody>
+    <tr><th scope="row">Rendimento bruto</th><td class="money">{{ report.income.income_brl }}</td></tr>
+    <tr><th scope="row">Perdas do ano</th><td class="money negative">-{{ report.income.loss_brl }}</td></tr>
+    <tr><th scope="row">Prejuízo herdado de {{ report.year|add:"-1" }}</th><td class="money negative">-{{ report.income.loss_inherited_brl }}</td></tr>
+    <tr><th scope="row">Base tributável</th><td class="money">{{ report.income.taxable_brl }}</td></tr>
+    <tr><th scope="row">Imposto (15%)</th><td class="money">{{ report.income.tax_brl }}</td></tr>
+    <tr><th scope="row">Crédito withholding EUA</th><td class="money">{{ report.income.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row"><strong>Imposto devido</strong></th><td class="money"><strong>{{ report.income.tax_due_brl }}</strong></td></tr>
+    <tr><th scope="row">Prejuízo a compensar</th><td class="money">{{ report.income.loss_carryforward_brl }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>6 — Crédito de imposto pago no exterior</h2>
+<div class="card">
+  <p class="page-sub">Lei 14.754/2023, art. 5º — crédito limitado a 15% por rendimento; excedente é descartado.</p>
+  <table>
+    <thead>
+    <tr><th>Rendimento</th><th>Bruto BRL</th><th>Limite 15%</th><th>IR pago no exterior</th><th>Crédito usado</th><th>Não aproveitado</th></tr>
+    </thead>
+    <tbody>
+    {% for r in report.income.credit_detail %}
+    <tr>
+      <td>{{ r.description }}</td>
+      <td class="money">{{ r.gross_brl }}</td>
+      <td class="money">{{ r.limit_brl }}</td>
+      <td class="money">{{ r.withholding_brl }}</td>
+      <td class="money">{{ r.credit_used_brl }}</td>
+      <td class="money">{{ r.credit_unused_brl }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="empty">Sem rendimentos com retenção no exterior.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>7 — Rendimentos isentos e não tributáveis</h2>
+<div class="card">
+  <p class="page-sub">{{ report.exempt.legal_basis }}</p>
+  <table>
+    <thead>
+    <tr><th>Conta (caixa não remunerado)</th><th>Variação cambial isenta (BRL)</th></tr>
+    </thead>
+    <tbody>
+    {% for e in report.exempt.accounts %}
+    <tr><td>{{ e.account.name|default:e.account.broker_name }}</td><td class="money">{{ e.exempt_brl }}</td></tr>
+    {% empty %}
+    <tr><td colspan="2" class="empty">Nenhum caixa não remunerado.</td></tr>
+    {% endfor %}
+    <tr><th scope="row"><strong>Total isento</strong></th><td class="money"><strong>{{ report.exempt.total_brl }}</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

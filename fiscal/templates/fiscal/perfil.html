@@ -1,0 +1,19 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Perfil do Beneficiário</h1>
+<p class="page-sub">Nome e CPF usados na seção "Beneficiário" do relatório DIRPF.</p>
+<div class="card">
+  {% if form.non_field_errors %}<p class="errors">{{ form.non_field_errors }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn">Salvar</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Não foi possível gerar o relatório</h1>
+<div class="card">
+  <p class="errors">{{ message }}</p>
+  <div class="btn-row">
+    <a href="/" class="btn secondary">Voltar</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Segurança</h1>
+<p class="page-sub">Sua senha protege os dados via criptografia (SQLCipher + Argon2id).
+A recovery key é o resgate caso você esqueça a senha.</p>
+<div class="card">
+  <h2 style="margin-top:0">Recovery key</h2>
+  <p>Se você perdeu a recovery key exibida na configuração inicial (ou quer
+  substituí-la), gere uma nova. A chave anterior deixa de valer e a nova é
+  exibida <strong>uma única vez</strong>.</p>
+  <form method="post" action="{% url 'recovery-regenerate' %}">
+    {% csrf_token %}
+    <button type="submit">Gerar nova recovery key</button>
+  </form>
+</div>
+{% endblock %}

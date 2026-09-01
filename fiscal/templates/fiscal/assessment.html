@@ -1,0 +1,59 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Apuração {{ year }}
+  {% if snapshot %}
+  <span class="badge ok">Ano fechado{% if snapshot.computed_at %} em {{ snapshot.computed_at|date:"d/m/Y H:i" }}{% endif %}</span>
+  {% else %}
+  <span class="badge">Ano em aberto</span>
+  {% endif %}
+</h1>
+<p class="page-sub">Regra: {{ result.rule.rule_version }} — {{ result.rule.notes }} (não confirmada com contador)</p>
+
+{% if messages %}
+{% for message in messages %}
+<div class="card" role="status"><strong>{{ message }}</strong></div>
+{% endfor %}
+{% endif %}
+
+<form method="post" action="{% url 'close-year' year %}" style="margin-bottom:1rem">
+  {% csrf_token %}
+  <button type="submit" onclick="return confirm('Fechar o ano {{ year }}? O snapshot será salvo/atualizado com os valores atuais.')">
+    Fechar ano {{ year }}
+  </button>
+</form>
+
+<div class="card">
+  <h2>Resultado consolidado</h2>
+  <table>
+    <tbody>
+    <tr><th scope="row">Rendimento bruto (BRL)</th><td class="money">{{ result.income_brl }}</td></tr>
+    <tr><th scope="row">Perdas (BRL)</th><td class="money">{{ result.loss_brl }}</td></tr>
+    <tr><th scope="row">Base tributável (BRL)</th><td class="money">{{ result.taxable_brl }}</td></tr>
+    <tr><th scope="row">Imposto ({{ result.rule.brackets.0.rate }})</th><td class="money">{{ result.tax_brl }}</td></tr>
+    <tr><th scope="row">Crédito withholding EUA</th><td class="money">{{ result.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row"><strong>Imposto devido</strong></th><td class="money"><strong>{{ result.tax_due_brl }}</strong></td></tr>
+    <tr><th scope="row">Prejuízo a compensar</th><td class="money">{{ result.loss_carryforward_brl }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Memória de cálculo</h2>
+<table>
+  <thead>
+  <tr><th>Evento</th><th>Natureza</th><th>Bruto BRL</th><th>Withholding BRL</th><th>Crédito usado</th></tr>
+  </thead>
+  <tbody>
+  {% for d in result.detail %}
+  <tr>
+    <td>{{ d.description|default:d.event }}</td>
+    <td><span class="badge">{{ d.kind }}</span></td>
+    <td class="money">{{ d.gross_brl }}</td>
+    <td class="money">{{ d.withholding_brl }}</td>
+    <td class="money">{{ d.credit_used }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5" class="empty">Sem rendimentos no ano.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

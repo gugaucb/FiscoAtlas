@@ -1,0 +1,6 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Falha ao abrir documento</h1>
+<div class="card" role="alert" style="border-left:4px solid #b45309">{{ message }}</div>
+<a href="{% url 'documents' %}" class="btn secondary">Voltar</a>
+{% endblock %}

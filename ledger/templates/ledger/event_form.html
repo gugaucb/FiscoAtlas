@@ -1,0 +1,67 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Novo lançamento</h1>
+<p class="page-sub">Registre a operação no ato. A PTAX do dia é buscada automaticamente no BCB.</p>
+<div class="card">
+  {% if form.non_field_errors %}<p class="errors">{{ form.non_field_errors }}</p>{% endif %}
+  <form method="post" id="event-form">
+    {% csrf_token %}
+    <div class="form-row" data-for="ALL">
+      <label for="{{ form.event_type.id_for_label }}">{{ form.event_type.label }}</label>
+      {{ form.event_type }}
+      {% if form.event_type.errors %}<span class="errors">{{ form.event_type.errors }}</span>{% endif %}
+    </div>
+    {% for field in form %}
+      {% if field.name == "ptax_manual" %}
+      <div class="form-row" data-for="ptax_manual">
+        <label for="{{ field.id_for_label }}">{{ field.label }}
+          — <a href="https://www.bcb.gov.br/estabilidadefinanceira/fechamentoptax" target="_blank" rel="noopener">consultar PTAX no Banco Central</a></label>
+        {{ field }}
+        {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+      </div>
+      {% elif field.name == "ptax_reason" %}
+      <div class="form-row" data-for="ptax_reason">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+      </div>
+      {% elif field.name != "event_type" %}
+      <div class="form-row" data-for="{{ field.name }}" {% if field.name != "account" and field.name != "trade_date" %}hidden{% endif %}>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    <p class="help">Os campos exibidos se ajustam ao tipo de evento escolhido. Para ativo novo, digite o ticker — ele será cadastrado automaticamente.</p>
+    <button type="submit" class="btn">Registrar</button>
+  </form>
+</div>
+<script>
+  const FIELDS = {
+    APORTE: ["account", "trade_date", "amount_usd"],
+    WITHDRAWAL: ["account", "trade_date", "amount_usd"],
+    JUROS: ["account", "trade_date", "amount_usd"],
+    FEE: ["account", "trade_date", "amount_usd"],
+    TAX_WITHHELD: ["account", "trade_date", "amount_usd"],
+    BUY: ["account", "asset_ticker", "trade_date", "quantity", "price_usd", "fee_usd"],
+    SELL: ["account", "asset_ticker", "trade_date", "quantity", "price_usd", "fee_usd"],
+    DIVIDEND: ["account", "asset_ticker", "trade_date", "quantity", "per_share_usd", "tax_usd"],
+  };
+  const typeSelect = document.querySelector("#id_event_type");
+  const rows = document.querySelectorAll("#event-form .form-row[data-for]");
+  function update() {
+    const visible = new Set(FIELDS[typeSelect.value] || []);
+    rows.forEach(r => {
+      if (r.dataset.for === "ALL") return;
+      const name = r.dataset.for;
+      const always = name === "account" || name === "trade_date"
+        || name === "ptax_manual" || name === "ptax_reason";
+      r.hidden = !always && !visible.has(name);
+    });
+  }
+  typeSelect.addEventListener("change", update);
+  update();
+</script>
+{% endblock %}

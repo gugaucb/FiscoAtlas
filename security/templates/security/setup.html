@@ -1,0 +1,17 @@
+{% extends "security/base.html" %}
+{% block title %}Configuração inicial de segurança{% endblock %}
+{% block content %}
+<h1>Configuração inicial de segurança</h1>
+<p class="sub">Defina a senha que protegerá seus dados fiscais. Ela não é usada
+diretamente como chave — o sistema deriva uma chave via Argon2id e gera uma
+VaultKey aleatória.</p>
+{% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{% url 'vault-setup' %}" class="card">
+  {% csrf_token %}
+  <label for="password">Nova senha (mínimo 8 caracteres)</label>
+  <input type="password" name="password" id="password" autocomplete="new-password" required>
+  <label for="password2" style="margin-top:1rem">Confirme a senha</label>
+  <input type="password" name="password2" id="password2" autocomplete="new-password" required>
+  <button type="submit">Configurar</button>
+</form>
+{% endblock %}

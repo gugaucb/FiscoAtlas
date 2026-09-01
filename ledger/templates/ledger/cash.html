@@ -1,0 +1,35 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Caixa</h1>
+<p class="page-sub">Saldo e extrato por conta corretora.</p>
+{% for a in accounts %}
+<h2>{{ a.account.name|default:a.account.broker_name }} <span class="badge">conta {{ a.account.account_number }}</span></h2>
+<p>Saldo atual: <span class="money positive">USD {{ a.balance }}</span></p>
+<p>
+  {% if a.account.is_interest_bearing %}
+  <span class="badge income">conta remunerada — aceita JUROS/rendimento</span>
+  {% else %}
+  <span class="badge">caixa não remunerado — variação cambial isenta (IN RFB 2180/2024, art. 3º)</span>
+  {% endif %}
+</p>
+<table>
+  <thead>
+  <tr><th>Data</th><th>Tipo</th><th>Valor USD</th><th>Saldo acumulado</th></tr>
+  </thead>
+  <tbody>
+  {% for h in a.history %}
+  <tr>
+    <td class="num">{{ h.event.trade_date }}</td>
+    <td><span class="badge {% if h.event.event_type == 'APORTE' %}cash{% elif h.event.event_type == 'DIVIDEND' or h.event.event_type == 'JUROS' %}income{% endif %}">{{ h.event.get_event_type_display }}</span></td>
+    <td class="money">{{ h.event.amount_usd }}</td>
+    <td class="money">{{ h.balance }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="4" class="empty">Sem movimentações.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% empty %}
+<p class="empty">Nenhuma conta cadastrada.</p>
+{% endfor %}
+{% endblock %}

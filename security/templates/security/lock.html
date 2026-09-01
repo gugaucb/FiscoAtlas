@@ -1,0 +1,15 @@
+{% extends "security/base.html" %}
+{% block title %}Aplicação bloqueada{% endblock %}
+{% block content %}
+<h1>Aplicação bloqueada</h1>
+<p class="sub">Informe sua senha ou a recovery key para desbloquear.</p>
+{% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{% url 'unlock' %}" class="card">
+  {% csrf_token %}
+  <label for="password">Senha</label>
+  <input type="password" name="password" id="password" autocomplete="current-password">
+  <label for="recovery_key" style="margin-top:1rem">Recovery key (se esqueceu a senha)</label>
+  <input type="text" name="recovery_key" id="recovery_key" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX">
+  <button type="submit">Desbloquear</button>
+</form>
+{% endblock %}

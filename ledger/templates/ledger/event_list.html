@@ -1,0 +1,33 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Eventos</h1>
+<p class="page-sub">Histórico completo de operações registradas manualmente.</p>
+<table>
+  <thead>
+  <tr><th>Data</th><th>Tipo</th><th>Ativo</th><th>Qtd</th><th>Preço USD</th><th>Valor USD</th><th>PTAX</th><th>Valor BRL</th><th>IR EUA</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for ev in events %}
+  <tr>
+    <td class="num">{{ ev.trade_date }}</td>
+    <td><span class="badge {% if ev.event_type == 'BUY' %}buy{% elif ev.event_type == 'SELL' %}sell{% elif ev.event_type == 'DIVIDEND' or ev.event_type == 'JUROS' %}income{% elif ev.event_type == 'APORTE' or ev.event_type == 'WITHDRAWAL' %}cash{% endif %}">{{ ev.get_event_type_display }}</span></td>
+    <td>{{ ev.asset|default:"—" }}</td>
+    <td class="num">{{ ev.quantity|default:"—" }}</td>
+    <td class="money">{{ ev.price_usd|default:"—" }}</td>
+    <td class="money">{{ ev.amount_usd }}</td>
+    <td class="num">{{ ev.fx_rate|default:"—" }}</td>
+    <td class="money">{{ ev.amount_brl|default:"—" }}</td>
+    <td class="money">{{ ev.tax_usd|default:"—" }}</td>
+    <td><a href="{% url 'event-correct' ev.pk %}">corrigir</a>
+        <form method="post" action="{% url 'event-deactivate' ev.pk %}" style="display:inline"
+              onsubmit="return confirm('Desativar este evento? Ele deixará de ser contabilizado.')">
+          {% csrf_token %}
+          <button type="submit" class="link-danger">excluir</button>
+        </form></td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="10" class="empty">Nenhum evento registrado. Comece pela tela <a href="{% url 'event-create' %}">Novo lançamento</a>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Imposto — Investimentos EUA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --ink: #16212e;
+      --ink-muted: #5a6675;
+      --primary: #14532d;
+      --primary-hover: #166534;
+      --accent: #0e7490;
+      --danger: #b91c1c;
+      --border: #dfe3e8;
+      --border-strong: #c3cad3;
+      --radius: 10px;
+      --shadow: 0 1px 2px rgba(22, 33, 46, .06), 0 2px 8px rgba(22, 33, 46, .05);
+      --mono: "Fira Code", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Fira Sans", -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+      margin: 0;
+    }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+
+    header.topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-inner { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .85rem 0; }
+    .brand { font-weight: 700; font-size: 1.05rem; letter-spacing: -.01em; margin-right: 1.5rem; color: var(--primary); text-decoration: none; }
+    nav[aria-label="principal"] { display: flex; flex-wrap: wrap; gap: .15rem; }
+    nav[aria-label="principal"] a {
+      text-decoration: none; color: var(--ink-muted); font-weight: 500; font-size: .92rem;
+      padding: .45rem .8rem; border-radius: 8px; transition: background .18s, color .18s; cursor: pointer;
+    }
+    nav[aria-label="principal"] a:hover { background: #eef1f4; color: var(--ink); }
+    nav[aria-label="principal"] a[aria-current="page"] { background: var(--primary); color: #fff; }
+    nav[aria-label="principal"] a:focus-visible, a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--accent); outline-offset: 2px;
+    }
+    main { padding: 2rem 0 4rem; }
+
+    h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; margin: 0 0 .3rem; }
+    .page-sub { color: var(--ink-muted); margin: 0 0 1.5rem; font-size: .95rem; }
+    h2 { font-size: 1.15rem; font-weight: 600; margin: 2rem 0 .75rem; }
+    h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 .5rem; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .card h2, .card h3 { margin-top: 0; }
+
+    table { width: 100%; border-collapse: collapse; background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+            box-shadow: var(--shadow); margin: 0 0 1.5rem; }
+    th, td { padding: .6rem .85rem; text-align: left; border-bottom: 1px solid var(--border); font-size: .93rem; }
+    thead th, tr > th[scope] { background: #eef1f4; font-weight: 600; font-size: .8rem;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--ink-muted); }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fafbfc; }
+    td, th { font-variant-numeric: tabular-nums; }
+    .money { font-family: var(--mono); font-size: .88rem; white-space: nowrap; }
+    .money.positive { color: var(--primary); }
+    .money.negative { color: var(--danger); }
+    .num { font-family: var(--mono); font-size: .88rem; }
+
+    .badge {
+      display: inline-block; font-size: .75rem; font-weight: 600; padding: .15rem .55rem;
+      border-radius: 999px; background: #eef1f4; color: var(--ink-muted); white-space: nowrap;
+    }
+    .badge.buy { background: #dbeafe; color: #1e40af; }
+    .badge.sell { background: #fef3c7; color: #92400e; }
+    .badge.income { background: #dcfce7; color: var(--primary); }
+    .badge.cash { background: #e0f2fe; color: #075985; }
+    .badge.ok { background: #dcfce7; color: var(--primary); }
+
+    .btn {
+      display: inline-block; background: var(--primary); color: #fff; border: 0;
+      font: inherit; font-weight: 600; font-size: .95rem; padding: .6rem 1.3rem;
+      border-radius: 8px; cursor: pointer; text-decoration: none;
+      transition: background .18s, transform .1s;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn:active { transform: scale(.98); }
+    .btn.secondary {
+      background: var(--surface); color: var(--primary); border: 1px solid var(--border-strong);
+    }
+    .btn.secondary:hover { background: #eef1f4; }
+    .btn-row { display: flex; gap: .75rem; align-items: center; margin: 1rem 0; flex-wrap: wrap; }
+
+    form label { display: block; font-weight: 500; font-size: .9rem; margin-bottom: .25rem; }
+    form input, form select, form textarea {
+      font: inherit; width: 100%; max-width: 26rem; padding: .55rem .7rem;
+      border: 1px solid var(--border-strong); border-radius: 8px; background: #fff; color: var(--ink);
+    }
+    form input:focus, form select:focus { border-color: var(--accent); outline: 2px solid rgba(14,116,144,.25); outline-offset: 0; }
+    .form-row { margin-bottom: 1rem; }
+    .help { color: var(--ink-muted); font-size: .88rem; margin: .75rem 0 1rem; }
+
+    .errors { color: var(--danger); font-size: .9rem; }
+    .messages { list-style: none; margin: 1rem 0; padding: .75rem 1rem;
+      background: #dcfce7; border: 1px solid #86efac; border-radius: var(--radius);
+      color: var(--primary); font-size: .92rem; }
+
+    .empty { color: var(--ink-muted); font-style: italic; padding: 1rem; }
+    a { color: var(--accent); }
+    a:hover { text-decoration: underline; }
+    em.note { color: var(--ink-muted); font-size: .9rem; }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 .9rem; }
+      table { display: block; overflow-x: auto; }
+      h1 { font-size: 1.35rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">Imposto — Investimentos EUA</a>
+      <nav aria-label="principal">
+        <a href="/" {% if request.resolver_match.url_name == 'event-list' %}aria-current="page"{% endif %}>Eventos</a>
+        <a href="{% url 'event-create' %}" {% if request.resolver_match.url_name == 'event-create' %}aria-current="page"{% endif %}>Novo lançamento</a>
+        <a href="{% url 'positions' %}" {% if request.resolver_match.url_name == 'positions' %}aria-current="page"{% endif %}>Posições</a>
+        <a href="{% url 'cash' %}" {% if request.resolver_match.url_name == 'cash' %}aria-current="page"{% endif %}>Caixa</a>
+        <a href="{% url 'opening-position' %}" {% if request.resolver_match.url_name == 'opening-position' %}aria-current="page"{% endif %}>Posição abertura</a>
+        <a href="{% url 'accounts' %}" {% if request.resolver_match.url_name == 'accounts' or request.resolver_match.url_name == 'account-edit' %}aria-current="page"{% endif %}>Contas</a>
+        <a href="/apuracao/2026/">Apuração</a>
+        <a href="/relatorio/2026/">Relatório</a>
+        <a href="{% url 'profile' %}" {% if request.resolver_match.url_name == 'profile' %}aria-current="page"{% endif %}>Perfil</a>
+        <a href="{% url 'documents' %}" {% if request.resolver_match.url_name == 'documents' %}aria-current="page"{% endif %}>Documentos</a>
+        <form method="post" action="{% url 'lock-now' %}" style="display:inline">{% csrf_token %}
+          <button type="submit" class="btn secondary" style="padding:.2rem .6rem">Bloquear</button>
+        </form>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    {% if messages %}<ul class="messages">{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
