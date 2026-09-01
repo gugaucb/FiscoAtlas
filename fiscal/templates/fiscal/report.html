@@ -42,7 +42,27 @@
   <a href="{% url 'report-pdf' report.year %}" class="btn">Baixar PDF</a>
   <a href="{% url 'memoria-pdf' report.year %}" class="btn secondary">Memória de cálculo (PDF)</a>
 </div>
-<p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})</em></p>
+<p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})
+  <a href="?ptax=editar">editar</a></em></p>
+{% if ptax_form %}
+<div class="card">
+  <h2>Editar PTAX de fechamento 31/12/{{ year }}</h2>
+  <form method="post" action="{% url 'report-ptax' year %}">
+    {% csrf_token %}
+    <div class="form-row">
+      <label for="id_rate">{{ ptax_form.rate.label }}</label>
+      {{ ptax_form.rate }}
+      {% if ptax_form.rate.errors %}<div class="errors">{{ ptax_form.rate.errors }}</div>{% endif %}
+    </div>
+    <div class="form-row">
+      <label for="id_motivo">{{ ptax_form.motivo.label }}</label>
+      {{ ptax_form.motivo }}
+      {% if ptax_form.motivo.errors %}<div class="errors">{{ ptax_form.motivo.errors }}</div>{% endif %}
+    </div>
+    <button type="submit" class="btn">Salvar PTAX</button>
+  </form>
+</div>
+{% endif %}
 
 <h2>1 — Identificação da instituição</h2>
 <ul>

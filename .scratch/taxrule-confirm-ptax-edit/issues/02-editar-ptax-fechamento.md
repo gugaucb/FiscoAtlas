@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Linha PTAX 31/12 no relatório com botão Editar abrindo o form (valor pré-preenchido com a taxa vigente)
 - [ ] POST grava novo override; relatório reflete o novo valor

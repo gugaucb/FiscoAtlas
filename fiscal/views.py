@@ -77,6 +77,12 @@ class ReportView(FriendlyErrorMixin, generic.TemplateView):
             # 31/12 sem cotação (ex.: data futura): oferece registro manual inline
             ctx["report"] = None
             ctx["ptax_form"] = FechamentoPtaxForm()
+            return ctx
+        if self.request.GET.get("ptax") == "editar":
+            vigente = ctx["report"]["ptax_yearend"]
+            ctx["ptax_form"] = FechamentoPtaxForm(
+                initial={"rate": vigente["rate"], "motivo": ""}
+            )
         return ctx
 
 
