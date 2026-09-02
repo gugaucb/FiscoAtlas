@@ -26,7 +26,8 @@ def test_balance_with_buy_and_dividend(acct, db):
     _record(acct, event_type="BUY", asset=asset, trade_date=date(2026, 1, 3),
             quantity=Decimal(10), price_usd=Decimal(100), fee_usd=Decimal(1))
     _record(acct, event_type="DIVIDEND", asset=asset, trade_date=date(2026, 2, 1),
-            quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1))
+            quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1),
+            foreign_tax_payment_date=date(2026, 2, 1), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL")
     balance = CashLedgerService().balance(acct)
     assert balance == Decimal(5000) - Decimal(1001) + Decimal(9)
 

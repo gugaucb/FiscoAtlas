@@ -23,7 +23,7 @@ def setup(db):
         EventService().record(dict(account=acct, event_type="APORTE", trade_date=date(2026, 1, 2), amount_usd=Decimal(5000)))
         EventService().record(dict(account=acct, event_type="BUY", asset=asset, trade_date=date(2026, 1, 3), quantity=Decimal(10), price_usd=Decimal(100), fee_usd=Decimal(1)))
         EventService().record(dict(account=acct, event_type="SELL", asset=asset, trade_date=date(2026, 6, 1), quantity=Decimal(10), price_usd=Decimal(110), fee_usd=Decimal(1)))
-        EventService().record(dict(account=acct, event_type="DIVIDEND", asset=asset, trade_date=date(2026, 6, 15), quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1)))
+        EventService().record(dict(account=acct, event_type="DIVIDEND", asset=asset, trade_date=date(2026, 6, 15), quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1), foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL"))
     return acct, asset
 
 

@@ -36,7 +36,8 @@ def test_full_year_computation(setup):
     _record(acct, event_type="SELL", asset=asset, trade_date=date(2026, 6, 1),
             quantity=Decimal(10), price_usd=Decimal(110), fee_usd=Decimal(1))
     _record(acct, event_type="DIVIDEND", asset=asset, trade_date=date(2026, 6, 15),
-            quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1))
+            quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1),
+            foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL")
     result = TaxEngine(2026).compute()
     # ganho venda: 10*110-1 = 1099 - custo 1001 (fee compõe custo) = 98 USD = 490 BRL
     # dividendo bruto: 10 USD = 50 BRL → renda 540 BRL

@@ -25,7 +25,7 @@ def setup(db):
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl, trade_date=date(2025, 2, 1), quantity=Decimal(20), price_usd=Decimal(90), fee_usd=Decimal(0)))
         # 2026: compra 5 @110 (5*110*5=2750), dividendo com withholding, venda 5 @120
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl, trade_date=date(2026, 2, 1), quantity=Decimal(5), price_usd=Decimal(110), fee_usd=Decimal(0)))
-        EventService().record(dict(account=acct, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 5, 15), quantity=Decimal(25), per_share_usd=Decimal(1), tax_usd=Decimal(5)))
+        EventService().record(dict(account=acct, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 5, 15), quantity=Decimal(25), per_share_usd=Decimal(1), tax_usd=Decimal(5), foreign_tax_payment_date=date(2026, 5, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL"))
         EventService().record(dict(account=acct, event_type="SELL", asset=aapl, trade_date=date(2026, 8, 1), quantity=Decimal(5), price_usd=Decimal(120), fee_usd=Decimal(0)))
     return acct, aapl
 

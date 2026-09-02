@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import django.forms as forms
-from ledger.models import Asset, FinancialEvent
+from ledger.models import DATE_EVIDENCE_SOURCES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
 
 LABELS = {
     "event_type": "Tipo de evento",
@@ -42,6 +42,24 @@ class EventForm(forms.ModelForm):
         label="Motivo da PTAX manual",
         help_text="Ex.: API do BCB indisponível em 31/12/2026.",
     )
+    foreign_tax_payment_date = forms.DateField(
+        required=False, widget=forms.DateInput(attrs={"type": "date"}),
+        label="Data de pagamento do imposto no exterior",
+        help_text="Data documentada no extrato — pode diferir da data do rendimento.",
+    )
+    confirm_same_day = forms.BooleanField(
+        required=False, label="Retenção na mesma data do rendimento",
+        help_text="Marque somente se o extrato registrar retenção e rendimento na mesma data.",
+    )
+    date_evidence_source = forms.ChoiceField(
+        required=False, choices=[("", "—")] + DATE_EVIDENCE_SOURCES,
+        label="Fonte documental da data",
+    )
+    country_code = forms.CharField(max_length=2, initial="US", label="País")
+    jurisdiction_level = forms.ChoiceField(choices=JURISDICTION_LEVELS, initial="FEDERAL", label="Jurisdição")
+    tax_type = forms.ChoiceField(choices=TAX_TYPES, initial="WITHHOLDING_INCOME_TAX", label="Tipo de imposto")
+    source_document_id = forms.CharField(max_length=128, required=False, label="ID do documento")
+    source_reference = forms.CharField(max_length=255, required=False, label="Referência do documento")
 
     class Meta:
         model = FinancialEvent
@@ -89,4 +107,17 @@ class EventForm(forms.ModelForm):
                 self.add_error(name, "Campo obrigatório para este tipo de evento.")
         if cleaned.get("ptax_manual") and not (cleaned.get("ptax_reason") or "").strip():
             self.add_error("ptax_reason", "Informe o motivo ao usar PTAX manual.")
+        tax = cleaned.get("tax_usd")
+        if tax and tax > 0:
+            if not cleaned.get("foreign_tax_payment_date") and not cleaned.get("confirm_same_day"):
+                self.add_error(
+                    "foreign_tax_payment_date",
+                    "Informe a data de pagamento do imposto no exterior ou confirme "
+                    "que coincide com a data do rendimento.",
+                )
+            if not cleaned.get("date_evidence_source") or cleaned.get("date_evidence_source") == "UNKNOWN":
+                self.add_error(
+                    "date_evidence_source",
+                    "Informe a fonte documental da data do imposto no exterior.",
+                )
         return cleaned

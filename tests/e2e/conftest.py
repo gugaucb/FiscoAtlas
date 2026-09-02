@@ -63,7 +63,11 @@ def novo_evento(page, live_server, etype, campos, conta_label="Avenue E2E"):
     page.select_option("#id_event_type", etype)
     page.select_option("#id_account", label=conta_label)
     for name, valor in campos.items():
-        page.fill(f"#id_{name}", str(valor))
+        campo = page.locator(f"#id_{name}")
+        if campo.evaluate("el => el.tagName") == "SELECT":
+            campo.select_option(str(valor))
+        else:
+            campo.fill(str(valor))
     page.fill("#id_ptax_manual", PTAX["ptax_manual"])
     page.fill("#id_ptax_reason", PTAX["ptax_reason"])
     page.click("#event-form button[type=submit]")
@@ -81,7 +85,11 @@ def seed_8_eventos(page, live_server):
                                            "quantity": "100", "price_usd": "100", "fee_usd": "1"})
     novo_evento(page, live_server, "DIVIDEND", {"trade_date": "2026-03-20", "asset_ticker": "AAPL",
                                                 "quantity": "100", "per_share_usd": "0.25",
-                                                "tax_usd": "4.13"})
+                                                "tax_usd": "4.13",
+                                                "foreign_tax_payment_date": "2026-03-20",
+                                                "date_evidence_source": "BROKER_STATEMENT",
+                                                "country_code": "US", "jurisdiction_level": "FEDERAL",
+                                                "tax_type": "WITHHOLDING_INCOME_TAX"})
     novo_evento(page, live_server, "SELL", {"trade_date": "2026-06-10", "asset_ticker": "AAPL",
                                             "quantity": "40", "price_usd": "120", "fee_usd": "1"})
     novo_evento(page, live_server, "JUROS", {"trade_date": "2026-07-01", "amount_usd": "500"})

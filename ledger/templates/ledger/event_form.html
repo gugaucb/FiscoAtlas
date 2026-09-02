@@ -49,10 +49,14 @@
     SELL: ["account", "asset_ticker", "trade_date", "quantity", "price_usd", "fee_usd"],
     DIVIDEND: ["account", "asset_ticker", "trade_date", "quantity", "per_share_usd", "tax_usd"],
   };
+  const FOREIGN_TAX = ["foreign_tax_payment_date", "confirm_same_day",
+    "date_evidence_source", "country_code", "jurisdiction_level", "tax_type",
+    "source_document_id", "source_reference"];
   const typeSelect = document.querySelector("#id_event_type");
   const rows = document.querySelectorAll("#event-form .form-row[data-for]");
   function update() {
     const visible = new Set(FIELDS[typeSelect.value] || []);
+    if (visible.has("tax_usd")) FOREIGN_TAX.forEach(f => visible.add(f));
     rows.forEach(r => {
       if (r.dataset.for === "ALL") return;
       const name = r.dataset.for;

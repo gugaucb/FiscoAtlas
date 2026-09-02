@@ -1,10 +1,27 @@
+from datetime import date
 from decimal import Decimal
 
+from django.db import transaction
+
 from fx.service import PtaxService
-from ledger.models import FinancialEvent
+from ledger.models import FinancialEvent, ForeignTaxPayment
 from ledger.position import PositionService
 
 TOL = Decimal("0.01")
+
+# Campos que pertencem ao ForeignTaxPayment, não ao FinancialEvent
+FOREIGN_TAX_FIELDS = (
+    "foreign_tax_payment_date", "confirm_same_day", "country_code",
+    "jurisdiction_level", "tax_type", "capture_method",
+    "date_evidence_source", "source_document_id", "source_reference",
+)
+
+
+def resolve_current_event_base_date(data: dict) -> date:
+    """Data base do evento para componentes do rendimento (compatibilidade do
+    modelo atual: único campo de data é trade_date). Quando o TaxDateResolver
+    existir (ticket 02), esta resolução passa a ser guiada por TaxRule.date_rule."""
+    return data["trade_date"]
 
 
 class EventService:
@@ -56,13 +73,56 @@ class EventService:
         if data.get("corrects"):
             data["corrects"].active = False
             data["corrects"].save()
-        fields = {k: v for k, v in data.items() if k not in ("amount_usd", "corrects", "per_share_usd")}
+
+        tax = data.get("tax_usd") or Decimal(0)
+        pagamento = self._dados_imposto_exterior(data, tax)
+        fields = {k: v for k, v in data.items() if k not in ("amount_usd", "corrects", "per_share_usd", *FOREIGN_TAX_FIELDS)}
         fields["fee_usd"] = fields.get("fee_usd") or Decimal(0)
         fields["tax_usd"] = fields.get("tax_usd") or Decimal(0)
-        return FinancialEvent.objects.create(
-            **fields,
-            corrects=data.get("corrects"),
-            amount_usd=expected,
-            fx_rate=rate,
-            amount_brl=(expected * rate).quantize(Decimal("0.00000001")),
-        )
+        with transaction.atomic():
+            evento = FinancialEvent.objects.create(
+                **fields,
+                corrects=data.get("corrects"),
+                amount_usd=expected,
+                fx_rate=rate,
+                amount_brl=(expected * rate).quantize(Decimal("0.00000001")),
+            )
+            if pagamento:
+                ForeignTaxPayment.objects.create(financial_event=evento, **pagamento)
+        return evento
+
+    def _dados_imposto_exterior(self, data: dict, tax: Decimal) -> dict | None:
+        """Valida e extrai os fatos do imposto pago no exterior.
+
+        Sem fallback silencioso de data: exige a data documental do pagamento
+        ou confirmação explícita de que coincide com a data do rendimento
+        (com evidência documental — a igualdade por si só não é evidência).
+        """
+        if not tax or tax <= 0:
+            return None
+        data_pgto = data.get("foreign_tax_payment_date")
+        evidencia = data.get("date_evidence_source") or "UNKNOWN"
+        if data_pgto is None:
+            if not data.get("confirm_same_day"):
+                raise ValueError(
+                    "Informe a data de pagamento do imposto no exterior "
+                    "(foreign_tax_payment_date) ou confirme que coincide com "
+                    "a data do rendimento (confirm_same_day)."
+                )
+            if evidencia == "UNKNOWN":
+                raise ValueError(
+                    "A igualdade de datas exige evidência documental "
+                    "(date_evidence_source != UNKNOWN)."
+                )
+            data_pgto = resolve_current_event_base_date(data)
+        return {
+            "tax_usd": tax,
+            "foreign_tax_payment_date": data_pgto,
+            "country_code": data.get("country_code") or "",
+            "jurisdiction_level": data.get("jurisdiction_level") or "UNKNOWN",
+            "tax_type": data.get("tax_type") or "UNKNOWN",
+            "capture_method": data.get("capture_method") or "MANUAL",
+            "date_evidence_source": evidencia,
+            "source_document_id": data.get("source_document_id") or "",
+            "source_reference": data.get("source_reference") or "",
+        }

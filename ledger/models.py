@@ -53,6 +53,8 @@ class FinancialEvent(models.Model):
     price_usd = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     fee_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     amount_usd = models.DecimalField(max_digits=20, decimal_places=8)
+    # DEPRECATED: fonte canônica do imposto é ForeignTaxPayment (0..N por evento).
+    # Mantido durante a transição; remoção no ticket 03 (engine/relatório/memória).
     tax_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     fx_rate = models.DecimalField(max_digits=12, decimal_places=8, null=True, blank=True)
     amount_brl = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
@@ -66,6 +68,53 @@ class FinancialEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} {self.trade_date} {self.asset or ''} {self.amount_usd}"
+
+
+JURISDICTION_LEVELS = [("FEDERAL", "Federal"), ("STATE", "Estadual"), ("LOCAL", "Municipal"), ("UNKNOWN", "Desconhecida")]
+TAX_TYPES = [("WITHHOLDING_INCOME_TAX", "Retenção na fonte (imposto de renda)"), ("INCOME_TAX", "Imposto de renda"), ("OTHER", "Outro"), ("UNKNOWN", "Desconhecido")]
+CAPTURE_METHODS = [("IMPORT", "Importação"), ("MANUAL", "Manual"), ("SYSTEM", "Sistema")]
+DATE_EVIDENCE_SOURCES = [
+    ("BROKER_STATEMENT", "Extrato da corretora"),
+    ("BROKER_TAX_REPORT", "Relatório fiscal da corretora"),
+    ("USER_PROVIDED_DOCUMENT", "Documento fornecido pelo usuário"),
+    ("OTHER_DOCUMENT", "Outro documento"),
+    ("USER_CONFIRMED", "Confirmação do usuário"),
+    ("UNKNOWN", "Desconhecida"),
+]
+
+
+class ForeignTaxPayment(models.Model):
+    """Fato documental: imposto pago/retido no exterior vinculado a um evento.
+
+    Registra apenas fatos (país, jurisdição, tipo, valor, data, fonte) — a
+    decisão de elegibilidade do crédito fiscal pertence ao motor de crédito.
+    A data de pagamento do imposto é independente da data do evento e nunca
+    deve ser presumida.
+    """
+
+    financial_event = models.ForeignKey(FinancialEvent, on_delete=models.PROTECT, related_name="foreign_tax_payments")
+    tax_usd = models.DecimalField(max_digits=20, decimal_places=8)
+    foreign_tax_payment_date = models.DateField()
+    country_code = models.CharField(max_length=2)
+    jurisdiction_level = models.CharField(max_length=16, choices=JURISDICTION_LEVELS)
+    tax_type = models.CharField(max_length=32, choices=TAX_TYPES)
+    capture_method = models.CharField(max_length=16, choices=CAPTURE_METHODS)
+    date_evidence_source = models.CharField(max_length=32, choices=DATE_EVIDENCE_SOURCES)
+    source_document_id = models.CharField(max_length=128, blank=True)
+    source_reference = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if self.tax_usd is not None and self.tax_usd <= 0:
+            raise ValueError("tax_usd do pagamento de imposto no exterior deve ser positivo")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.tax_type} {self.country_code} {self.foreign_tax_payment_date} {self.tax_usd}"
 
 
 class OpeningPosition(models.Model):

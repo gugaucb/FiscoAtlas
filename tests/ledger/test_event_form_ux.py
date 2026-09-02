@@ -66,6 +66,10 @@ def test_dividendo_com_valor_por_acao(client, account):
             "event_type": "DIVIDEND", "account": account.pk, "asset_ticker": "AAPL",
             "trade_date": "2026-03-01", "quantity": "25", "per_share_usd": "1",
             "tax_usd": "3.75",
+            "foreign_tax_payment_date": "2026-03-01",
+            "date_evidence_source": "BROKER_STATEMENT",
+            "country_code": "US", "jurisdiction_level": "FEDERAL",
+            "tax_type": "WITHHOLDING_INCOME_TAX",
         })
     assert resp.status_code == 302
     ev = FinancialEvent.objects.get(event_type="DIVIDEND")

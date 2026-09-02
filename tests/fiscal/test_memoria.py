@@ -26,7 +26,7 @@ def setup(db):
         EventService().record(dict(account=acct, event_type="SELL", asset=aapl, trade_date=date(2026, 3, 10),
                                    quantity=Decimal(8), price_usd=Decimal(200), fee_usd=Decimal(0)))
         EventService().record(dict(account=acct, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 4, 10),
-                                   quantity=Decimal(7), per_share_usd=Decimal(1), tax_usd=Decimal(2)))
+                                   quantity=Decimal(7), per_share_usd=Decimal(1), tax_usd=Decimal(2), foreign_tax_payment_date=date(2026, 4, 10), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL"))
     return acct, aapl
 
 
