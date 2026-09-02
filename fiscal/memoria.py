@@ -6,6 +6,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
 
+from fiscal.engine import fx_imposto_exterior
+from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent, OpeningPosition
 
 CENT = Decimal("0.01")
@@ -71,11 +73,18 @@ def build_memoria(year: int) -> dict:
             elif ev.event_type == "DIVIDEND":
                 gross_usd = ev.amount_usd + ev.tax_usd
                 fx = ev.fx_rate or Decimal(0)
+                pagamento = ev.foreign_tax_payments.first()
+                fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
                 rows.append({
                     "kind": "DIVIDENDO", "event": ev, "date": ev.trade_date,
                     "quantity": ev.quantity, "per_share_usd": ev.quantity and ev.amount_usd / ev.quantity or Decimal(0),
                     "gross_usd": gross_usd, "tax_usd": ev.tax_usd, "fx_rate": ev.fx_rate,
-                    "gross_brl": _q(gross_usd * fx), "ir_eua_brl": _q(ev.tax_usd * fx),
+                    "income_fx_quote": "VENDA",
+                    "gross_brl": _q(gross_usd * fx),
+                    "ir_eua_brl": _q(ev.tax_usd * fx_tax),
+                    "ir_eua_fx_quote": "COMPRA",
+                    "ir_eua_fx_date": pagamento.foreign_tax_payment_date if pagamento else ev.trade_date,
+                    "ir_eua_fx_rate": fx_tax,
                     "net_brl": _q(ev.amount_usd * fx),
                 })
         if rows:
@@ -139,9 +148,10 @@ def render_memoria_pdf(memoria: dict) -> bytes:
                 story.append(Paragraph(f"DIVIDENDO — {r['date'].strftime('%d/%m/%Y')}", h3))
                 rows = [
                     ["Valor bruto", f"US$ {_fmt(r['gross_usd'])}"],
-                    ["PTAX", _fmt_rate(r["fx_rate"])],
+                    ["PTAX rendimento (VENDA)", _fmt_rate(r["fx_rate"])],
                     ["Bruto BRL", f"R$ {_fmt(r['gross_brl'])}"],
                     ["IR EUA", f"R$ {_fmt(r['ir_eua_brl'])}"],
+                    ["PTAX imposto (COMPRA)", _fmt_rate(r.get("ir_eua_fx_rate") or 0)],
                     ["Líquido BRL", f"R$ {_fmt(r['net_brl'])}"],
                 ]
                 story.append(Table(rows))

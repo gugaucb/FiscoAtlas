@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.db.models import Sum
 
-from fiscal.engine import TaxEngine
+from fiscal.engine import TaxEngine, fx_imposto_exterior
 from fiscal.models import AnnualAssessment, Profile
 from fx.service import PtaxService
 from ledger.cash import INFLOWS, CashLedgerService
@@ -65,13 +65,17 @@ class ReportService:
                     div_events = FinancialEvent.objects.filter(
                         account=account, asset=asset, active=True,
                         event_type__in=("DIVIDEND", "JUROS"), trade_date__year=self.year,
-                    )
+                    ).prefetch_related("foreign_tax_payments")
                     dividends_brl = Decimal(0)
                     withholding_brl = Decimal(0)
+                    ptax_service = PtaxService()
                     for ev in div_events:
                         fx = ev.fx_rate or Decimal(0)
                         dividends_brl += (ev.amount_usd + ev.tax_usd) * fx
-                        withholding_brl += ev.tax_usd * fx
+                        # imposto pago no exterior: PTAX COMPRA na data do pagamento
+                        pagamento = ev.foreign_tax_payments.first()
+                        fx_tax = fx_imposto_exterior(ev, pagamento, ptax_service)
+                        withholding_brl += ev.tax_usd * fx_tax
                     gains_brl = Decimal(0)
                     losses_brl = Decimal(0)
                     for r in PositionService().realized(account, asset, until=yearend):

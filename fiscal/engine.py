@@ -1,10 +1,33 @@
 from decimal import Decimal
 
+from fiscal.date_rules import TaxDateResolver
 from fiscal.models import AnnualAssessment, TaxRule
+from fx.service import PtaxService
 from ledger.models import FinancialEvent
 from ledger.position import PositionService
 
 ZERO = Decimal("0.00")
+
+
+def _pagamentos_por_evento(events):
+    """Mapa event_id → ForeignTaxPayment (fatos do imposto no exterior)."""
+    from ledger.models import ForeignTaxPayment
+    ev_ids = [ev.id for ev in events]
+    return {
+        p.financial_event_id: p
+        for p in ForeignTaxPayment.objects.filter(financial_event_id__in=ev_ids)
+    }
+
+
+def fx_imposto_exterior(ev, pagamento, ptax_service) -> Decimal:
+    """PTAX COMPRA na data documental do pagamento (Lei 14.754/2023, art. 4º §2º).
+
+    Fallback para o fx do evento somente quando o evento antecede a entidade
+    ForeignTaxPayment (transição; ticket 03 remove event.tax_usd)."""
+    if pagamento:
+        data, quote = TaxDateResolver().resolve_ptax_request("FOREIGN_TAX", ev, pagamento)
+        return ptax_service.get_rate(data, quote_type=quote).rate
+    return ev.fx_rate or ZERO
 
 
 class TaxEngine:
@@ -61,6 +84,7 @@ class TaxEngine:
         income = ZERO
         loss = ZERO
         credit = ZERO
+        pagamentos = _pagamentos_por_evento(events)
         for ev in events:
             fx = ev.fx_rate or ZERO
             if ev.event_type == "SELL":
@@ -78,10 +102,13 @@ class TaxEngine:
                     "withholding_brl": ZERO, "credit_used": ZERO,
                 })
             else:  # DIVIDEND, JUROS
+                pagamento = pagamentos.get(ev.id)
                 gross_usd = ev.amount_usd + ev.tax_usd
                 gross_brl = (gross_usd * fx).quantize(Decimal("0.01"))
                 income += gross_brl
-                wh_brl = (ev.tax_usd * fx).quantize(Decimal("0.01"))
+                # imposto pago no exterior: PTAX COMPRA na data do pagamento
+                fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
+                wh_brl = (ev.tax_usd * fx_tax).quantize(Decimal("0.01"))
                 used = min(wh_brl, (gross_brl * rate).quantize(Decimal("0.01")))
                 credit += used
                 detail.append({

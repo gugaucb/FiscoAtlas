@@ -28,7 +28,9 @@ def setup(db):
 
 
 def test_assessment_page_shows_numbers(client, setup):
-    html = client.get("/apuracao/2026/").content.decode()
+    # imposto pago no exterior: PTAX COMPRA mockada (mesma taxa do cenário)
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        html = client.get("/apuracao/2026/").content.decode()
     assert "76,00" in html  # imposto devido (pt-br)
     assert "540,00" in html  # renda
     assert "AAPL" in html  # memória de cálculo

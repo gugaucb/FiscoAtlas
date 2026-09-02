@@ -32,7 +32,9 @@ def setup(db):
 
 def _memoria(setup):
     acct, aapl = setup
-    return build_memoria(2026), aapl
+    # imposto pago no exterior: PTAX COMPRA mockada (mesma taxa do cenário)
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        return build_memoria(2026), aapl
 
 
 def test_memoria_structure_and_values(setup):
