@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Entidade ForeignTaxPayment).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Campo `date_rule` em `TaxRule`, separado de `quote_type`; enum: ACQUISITION_DATE / DISPOSAL_DATE / INCOME_RECEIPT_DATE / FOREIGN_TAX_PAYMENT_DATE / REFERENCE_DATE
 - [ ] Regras do seed: compra de ativo = ACQUISITION_DATE + BCB_SELL; venda = DISPOSAL_DATE + BCB_SELL; dividendo/juros/cupom = INCOME_RECEIPT_DATE + BCB_SELL; imposto exterior = FOREIGN_TAX_PAYMENT_DATE + BCB_BUY
