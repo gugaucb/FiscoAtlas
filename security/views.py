@@ -55,6 +55,8 @@ class SetupView(generic.View):
         vault_key = svc.unlock_with_password(password)
         state.set_vault_key(vault_key)
         _encrypt_main_database_if_plaintext()
+        from security.bootstrap import bootstrap_pos_unlock
+        bootstrap_pos_unlock()
         request.session[UNLOCKED_KEY] = True
         log_event("LOGIN_SUCCESS", metadata_safe={"method": "setup"})
         log_event("DATABASE_UNLOCKED")
@@ -105,6 +107,8 @@ class UnlockView(generic.View):
             # chave só em memória; conexões do banco principal reabrem com PRAGMA key
             state.set_vault_key(vault_key)
             _close_db_connections()
+            from security.bootstrap import bootstrap_pos_unlock
+            bootstrap_pos_unlock()
             request.session[UNLOCKED_KEY] = True
             # reinicia o relógio de inatividade: last_activity velho (sessão
             # persistente após um auto-lock) causaria auto-lock imediato
