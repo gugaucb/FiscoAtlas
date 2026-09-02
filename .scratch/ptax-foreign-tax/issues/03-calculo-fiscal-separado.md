@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (date_rule no TaxRule).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Motor de cálculo trata rendimento e foreign tax como componentes independentes; não reutilizar cotação nem data de um no outro
 - [ ] Rendimento bruto convertido por BCB_SELL na data do rendimento; imposto por BCB_BUY na `foreign_tax_payment_date`
