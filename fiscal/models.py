@@ -29,6 +29,14 @@ class TaxRuleQuerySet(models.QuerySet):
 
 
 class TaxRule(models.Model):
+    DATE_RULES = [
+        ("ACQUISITION_DATE", "Data da aquisição"),
+        ("DISPOSAL_DATE", "Data da alienação"),
+        ("INCOME_RECEIPT_DATE", "Data do recebimento do rendimento"),
+        ("FOREIGN_TAX_PAYMENT_DATE", "Data do pagamento do imposto no exterior"),
+        ("REFERENCE_DATE", "Data de referência informada"),
+    ]
+
     tax_year = models.PositiveIntegerField()
     rule_version = models.CharField(max_length=64)
     brackets = models.JSONField()  # [{"limit_brl": "6000.00"|None, "rate": "0.15"}]
@@ -36,6 +44,7 @@ class TaxRule(models.Model):
     loss_carryforward_enabled = models.BooleanField(default=True)
     fx_cash_policy = models.JSONField(default=dict)  # política de caixa não remunerado
     quote_type = models.CharField(max_length=10, default="VENDA")
+    date_rule = models.CharField(max_length=32, choices=DATE_RULES, default="INCOME_RECEIPT_DATE")
     confirmed = models.BooleanField(default=False)
     notes = models.CharField(max_length=500, blank=True)
     effective_from = models.DateField()
