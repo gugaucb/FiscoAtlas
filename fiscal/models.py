@@ -20,6 +20,9 @@ class Profile(models.Model):
     residency_start_date = models.DateField(null=True, blank=True)
     residency_end_date = models.DateField(null=True, blank=True)
     has_dsdp = models.BooleanField(default=False)
+    # RF-CBE-005: declaração formal de que não há outros bens no exterior
+    # fora da plataforma (transforma CBE_UNDETERMINED em CBE_NOT_REQUIRED)
+    external_assets_declared_complete = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if Profile.objects.exclude(pk=self.pk).exists():
