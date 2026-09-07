@@ -6,7 +6,7 @@
 **Branch:** `fix/explicit-asset-types`.
 
 **Blocked by:** None (can start immediately).
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] EventForm rejeita com ValidationError ticker não cadastrado (fim do get_or_create implícito)
 - [ ] Asset suporta FOREIGN_EQUITY, FOREIGN_ETF, REIT, US_TREASURY, FOREIGN_BOND, FOREIGN_FUND, CONTROLLED_ENTITY, TRUST, UNKNOWN
