@@ -48,6 +48,9 @@
     BUY: ["account", "asset_ticker", "trade_date", "quantity", "price_usd", "fee_usd"],
     SELL: ["account", "asset_ticker", "trade_date", "quantity", "price_usd", "fee_usd"],
     DIVIDEND: ["account", "asset_ticker", "trade_date", "quantity", "per_share_usd", "tax_usd"],
+    STOCK_SPLIT: ["account", "asset_ticker", "trade_date", "split_ratio_from", "split_ratio_to"],
+    REVERSE_SPLIT: ["account", "asset_ticker", "trade_date", "split_ratio_from", "split_ratio_to"],
+    CASH_IN_LIEU: ["account", "asset_ticker", "trade_date", "quantity", "amount_usd"],
   };
   const FOREIGN_TAX = ["foreign_tax_payment_date", "confirm_same_day",
     "date_evidence_source", "country_code", "jurisdiction_level", "tax_type",

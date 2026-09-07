@@ -50,12 +50,20 @@ class EventService:
             raise ValueError("JUROS só é válido em conta remunerada; conta não remunerada")
         if etype in ("BUY", "SELL") and (not qty or not price or qty <= 0 or price <= 0):
             raise ValueError("quantity e price_usd devem ser positivos para BUY/SELL")
+        if etype in ("STOCK_SPLIT", "REVERSE_SPLIT"):
+            de, para = data.get("split_ratio_from"), data.get("split_ratio_to")
+            if not de or not para or de <= 0 or para <= 0:
+                raise ValueError("Informe a razão do split (split_ratio_from e split_ratio_to).")
         if etype == "BUY":
             expected = -(qty * price + fee)
         elif etype == "SELL":
             expected = qty * price - fee
         elif etype == "DIVIDEND":
             expected = data.get("per_share_usd", Decimal(0)) * qty - tax
+        elif etype in ("STOCK_SPLIT", "REVERSE_SPLIT"):
+            expected = Decimal(0)
+        elif etype == "CASH_IN_LIEU":
+            expected = data["amount_usd"]
         else:  # APORTE, WITHDRAWAL, JUROS, FEE, TAX_WITHHELD
             expected = data["amount_usd"]
             if etype in ("WITHDRAWAL", "FEE", "TAX_WITHHELD"):
@@ -66,7 +74,7 @@ class EventService:
         if etype in ("BUY", "SELL", "DIVIDEND") and informed is not None and abs(informed - expected) > TOL:
             raise ValueError(f"amount_usd diverge do calculado: esperado {expected}")
 
-        if etype == "SELL":
+        if etype in ("SELL", "CASH_IN_LIEU"):
             pos = PositionService().position(data["account"], data["asset"])
             if pos["quantity"] < qty:
                 raise ValueError(f"posição insuficiente: {pos['quantity']} < {qty}")
