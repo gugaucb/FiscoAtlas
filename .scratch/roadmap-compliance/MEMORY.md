@@ -98,6 +98,13 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Alerta avaliado no report (engine reutilizado; nenhuma duplicação de cálculo).
   - Desvio do roadmap: nenhum.
 
+### 2026-09-07 — Ticket 11: schema versionado da DIRPF (resolved)
+- Branch `feat/dirpf-schema-versioning` @ 65dd10d; suíte: 307 passed.
+- Decisões:
+  - DirpfSchema único por filing_year; resolução faz MERGE schema sobre defaults estáticos (campos novos de exercício futuro não quebram o relatório).
+  - Trava de homologação: sem cadastro → default/HOMOLOGADO; com cadastro não homologado → PRELIMINAR exposto no relatório.
+  - Desvio do roadmap: nenhum.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
