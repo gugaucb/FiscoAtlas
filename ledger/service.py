@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from django.db import transaction
 
@@ -143,3 +144,55 @@ class EventService:
             "source_document_id": data.get("source_document_id") or "",
             "source_reference": data.get("source_reference") or "",
         }
+
+
+class BrokerTransferService:
+    """RF-CST-003/004: transferência de ativos/caixa entre contas do mesmo
+    titular não é alienação — registra par de pontas (mesmo transfer_pair_id)
+    e transporta quantidade + custo histórico BRL integralmente."""
+
+    def __init__(self, ptax: PtaxService | None = None):
+        self.ptax = ptax or PtaxService()
+
+    def _ptax_rate(self, trade_date) -> Decimal:
+        return self.ptax.get_rate(trade_date).rate
+
+    def record(self, out_account, in_account, trade_date, asset=None,
+               quantity=None, amount_usd=None) -> tuple:
+        if out_account == in_account:
+            raise ValueError("conta de origem e destino devem ser distintas.")
+        rate = self._ptax_rate(trade_date)
+        pair_id = uuid4()
+        if asset:
+            pos = PositionService().position(out_account, asset)
+            if quantity is None or quantity <= 0 or pos["quantity"] < quantity:
+                raise ValueError(
+                    f"posição insuficiente: {pos['quantity']} < {quantity}"
+                )
+            avg_usd = pos["avg_cost_usd"]
+            cost_usd = (avg_usd * quantity).quantize(Decimal("0.00000001"))
+            cost_brl = (pos["cost_brl_total"] * quantity / pos["quantity"]).quantize(Decimal("0.00000001"))
+            base = dict(asset=asset, quantity=quantity, price_usd=None,
+                        fee_usd=Decimal(0), tax_usd=Decimal(0),
+                        transfer_pair_id=pair_id, trade_date=trade_date)
+            out = {**base, "event_type": "BROKER_TRANSFER_OUT", "account": out_account}
+            inp = {**base, "event_type": "BROKER_TRANSFER_IN", "account": in_account}
+            out["amount_usd"], inp["amount_usd"] = cost_usd, cost_usd
+            out["amount_brl"], inp["amount_brl"] = cost_brl, cost_brl
+        else:
+            if not amount_usd or amount_usd <= 0:
+                raise ValueError("informe quantity (ativo) ou amount_usd (caixa).")
+            out = dict(event_type="BROKER_TRANSFER_OUT", account=out_account,
+                       trade_date=trade_date, amount_usd=amount_usd,
+                       fee_usd=Decimal(0), tax_usd=Decimal(0),
+                       transfer_pair_id=pair_id)
+            inp = dict(event_type="BROKER_TRANSFER_IN", account=in_account,
+                       trade_date=trade_date, amount_usd=amount_usd,
+                       fee_usd=Decimal(0), tax_usd=Decimal(0),
+                       transfer_pair_id=pair_id)
+            out["amount_brl"] = inp["amount_brl"] = (amount_usd * rate).quantize(Decimal("0.00000001"))
+        out["fx_rate"] = inp["fx_rate"] = rate
+        with transaction.atomic():
+            saida = FinancialEvent.objects.create(**out)
+            entrada = FinancialEvent.objects.create(**inp)
+        return saida, entrada

@@ -30,6 +30,7 @@ class AnnualClosingValidator:
         self._checar_ativos_unknown()
         self._checar_integridade_cambial()
         self._checar_vendas_acima_da_custodia()
+        self._checar_transferencias_solitarias()
         self._checar_credito_exterior()
         if self.violations:
             raise ValidationError(self.violations)
@@ -87,6 +88,28 @@ class AnnualClosingValidator:
                         f"({pos['quantity']}) — venda a descoberto sem mecanismo "
                         "homologado não é apurável (RF-VAL-006)."
                     )
+
+    # ------------------------------------------------------------ RF-CST-004
+    def _checar_transferencias_solitarias(self):
+        """CT-015: transferência sem ponta pareada (só IN ou só OUT com o
+        mesmo transfer_pair_id) é inconsistência de registro."""
+        from django.db.models import Count
+        pares = (
+            FinancialEvent.objects.filter(
+                active=True, trade_date__year=self.year,
+                event_type__in=("BROKER_TRANSFER_IN", "BROKER_TRANSFER_OUT"),
+                transfer_pair_id__isnull=False,
+            )
+            .values("transfer_pair_id")
+            .annotate(n=Count("id"))
+            .filter(n__lt=2)
+        )
+        for p in pares:
+            self.violations.append(
+                "Transferência de custódia sem ponta pareada "
+                f"(transfer_pair_id={p['transfer_pair_id']}) — inconsistência de "
+                "registro (RF-CST-004). Registre a ponta correspondente."
+            )
 
     # ------------------------------------------------------------ RF-VAL-008/009
     def _checar_credito_exterior(self):
