@@ -44,6 +44,15 @@
 </div>
 <p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})
   <a href="?ptax=editar">editar</a></em></p>
+{% if report.high_income and report.high_income.status != "HIGH_INCOME_NOT_APPLICABLE" %}
+<div class="card" role="status" {% if report.high_income.highlight %}style="border-left:4px solid #b45309"{% endif %}>
+  <h2>Altas rendas — tributação mínima (Lei nº 15.270/2025)</h2>
+  <p>
+    {% if report.high_income.highlight %}<strong>Alerta:</strong>{% endif %}
+    {{ report.high_income.message }}
+  </p>
+</div>
+{% endif %}
 {% if report.cbe %}
 <div class="card" role="status">
   <h2>CBE — Banco Central (data-base 31/12)</h2>
