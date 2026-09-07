@@ -4,7 +4,7 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
 
 ## Estado
 
-- Fase 1 (P0): 2/5 concluídos
+- Fase 1 (P0): 3/5 concluídos
 - Fase 2 (P1): 0/5 — fora do ciclo atual
 - Fase 3 (P2): 0/3 — fora do ciclo atual
 
@@ -27,6 +27,14 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Atribuição proporcional: nova seção `ownership_attribution` (income/custody/cash × share%); linhas de assets/cash do DIRPF ficaram intocadas (bens do casal entram no titular no DIRPF — atribuição é demonstrativa).
   - ProfileForm: tax_residency_status não-obrigatório (default UNKNOWN) para não quebrar cadastro antigo.
   - Desvio do roadmap: relatório demonstra atribuição em seção própria em vez de reescrever as fichas Bens/Rendimentos.
+
+### 2026-09-07 — Ticket 03: filtro FEDERAL no crédito (resolved)
+- Branch `fix/foreign-tax-federal-filter` @ 5ae5016; suíte: 252 passed.
+- Decisões:
+  - `RECIPROCITY_COUNTRIES = {"US"}` como constante de engine (RF-FTC-002) — país+jurisdição FEDERAL; UNKNOWN não gera crédito (fato sem julgamento não vira crédito).
+  - Evento legado (sem ForeignTaxPayment) mantém crédito durante a transição — punir eventos históricos mudaria apurações passadas sem base documental nova.
+  - Segregação: engine agrega `ineligible_foreign_tax_brl`; report/template exibem o total não elegível e flag por linha.
+  - Desvio do roadmap: nenhum.
 
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.

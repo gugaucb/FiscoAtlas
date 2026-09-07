@@ -167,6 +167,13 @@
     {% empty %}
     <tr><td colspan="9" class="empty">Sem rendimentos com retenção no exterior.</td></tr>
     {% endfor %}
+    {% if report.income.ineligible_foreign_tax_brl %}
+    <tr>
+      <td colspan="4"><strong>Não elegível ao crédito</strong> — jurisdição não federal ou país sem reciprocidade (art. 4º)</td>
+      <td class="money"><strong>{{ report.income.ineligible_foreign_tax_brl }}</strong></td>
+      <td colspan="4"></td>
+    </tr>
+    {% endif %}
     </tbody>
   </table>
 </div>
