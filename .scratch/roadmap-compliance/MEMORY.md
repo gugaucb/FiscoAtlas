@@ -90,6 +90,14 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Refund retroativo a ano FECHADO: AnnualClosingValidator do ano do estorno bloqueia com pedido de retificação da DAA de origem (CT-008). Refund no mesmo ano não bloqueia.
   - Desvio do roadmap: nenhum.
 
+### 2026-09-07 — Ticket 10: tributação mínima de altas rendas (resolved)
+- Branch `feat/high-income-min-tax` @ fdded42; suíte: 302 passed.
+- Decisões:
+  - Limiar testado contra a renda exterior APURADA (engine): se só esse recorte já > R$600.000 → THRESHOLD_EXCEEDED com highlight; abaixo → UNDETERMINED com mensagem instrutiva (plataforma não vê renda global).
+  - Ano < 2026 → NOT_APPLICABLE.
+  - Alerta avaliado no report (engine reutilizado; nenhuma duplicação de cálculo).
+  - Desvio do roadmap: nenhum.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
