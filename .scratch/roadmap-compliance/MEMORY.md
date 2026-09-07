@@ -54,6 +54,15 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - CloseYearView: validação + snapshot dentro de transaction.atomic; erro → messages.error por violação + redirect (sem confirmed).
   - Desvio do roadmap: erro volta com redirect + mensagens (não render 200) — idempotente e testável.
 
+### 2026-09-07 — Ticket 06: transferências de custódia (resolved)
+- Branch `feat/broker-transfers` @ 44c9959; suíte: 281 passed. Início da Fase 2 (P1).
+- Decisões:
+  - Transferência de ativo sai pelo CUSTO MÉDIO do momento (quantidade × média USD; proporção do custo BRL) — IN entra com o mesmo valor: custo total global preservado, custo médio idêntico nas duas contas.
+  - realized() inclui transferências no walk de custo (sem apuração) para que a base do custo médio das vendas posteriores fique correta por conta.
+  - Ponta solta (CT-015) verificada no AnnualClosingValidator via agregação de transfer_pair_id com n<2 pontas.
+  - event_type max_length 16→32 (necessário para os novos valores).
+  - Desvio do roadmap: caixa (amount_usd) transferível além de ativos — mesmo mecanismo de par.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.

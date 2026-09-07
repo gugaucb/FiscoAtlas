@@ -6,9 +6,9 @@
 **Branch:** `feat/broker-transfers`.
 
 **Blocked by:** 05.
-**Status:** ready-for-agent — Fase 2, fora do ciclo atual.
+**Status:** resolved
 
-- [ ] CT-014: 100 AAPL @US$150 (R$75.000) na Conta A; transferir 40 → A fica 60 (R$45.000), B fica 40 (R$30.000)
-- [ ] Nenhuma alienação tributável gerada no TaxEngine/realized()
-- [ ] transfer_pair_id sem ponta pareada → alerta de inconsistência
-- [ ] Suíte completa verde
+- [x] CT-014: 100 AAPL @US$150 (R$75.000) na Conta A; transferir 40 → A fica 60 (R$45.000), B fica 40 (R$30.000)
+- [x] Nenhuma alienação tributável gerada no TaxEngine/realized()
+- [x] transfer_pair_id sem ponta pareada → alerta de inconsistência
+- [x] Suíte completa verde
