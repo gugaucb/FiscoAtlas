@@ -27,7 +27,7 @@ def _num(soup_text, valor):
 
 
 @pytest.fixture
-def fluxo(live_server, page, conta, vault_ready, regra_2026, db):
+def fluxo(live_server, page, conta, vault_ready, regra_2026, residente, db):
     login(page, live_server)
     seed_8_eventos(page, live_server)
     return live_server, page

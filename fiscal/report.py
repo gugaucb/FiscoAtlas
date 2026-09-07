@@ -31,14 +31,20 @@ class ReportService:
         assets = []
         cash = []
         exempt_accounts = []
+        # RF-PER-004: acumuladores por conta para atribuição proporcional
+        # ao contribuinte (contas conjuntas / de terceiros).
+        attrib = {}
         prev_yearend = date(self.year - 1, 12, 31)
         for account in BrokerAccount.objects.filter(active=True):
+            acc = attrib.setdefault(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0)})
             balance_usd = CashLedgerService().balance(account, until=yearend)
+            cash_brl = (balance_usd * ptax.rate).quantize(Decimal("0.01"))
             cash.append({
                 "account": account,
                 "balance_usd": balance_usd,
-                "balance_brl": (balance_usd * ptax.rate).quantize(Decimal("0.01")),
+                "balance_brl": cash_brl,
             })
+            acc["cash_brl"] = cash_brl
             if not account.is_interest_bearing:
                 # Variação cambial de caixa não remunerado é isenta
                 # (IN RFB 2180/2024, art. 3º): saldo a PTAX 31/12 − custo BRL
@@ -59,6 +65,32 @@ class ReportService:
             ).distinct()
             for asset in assets_qs:
                 pos = PositionService().position(account, asset, until=yearend)
+                # rendimentos e resultado de alienação são contabilizados para
+                # a atribuição proporcional mesmo sem posição remanescente
+                div_events = FinancialEvent.objects.filter(
+                    account=account, asset=asset, active=True,
+                    event_type__in=("DIVIDEND", "JUROS"), trade_date__year=self.year,
+                ).prefetch_related("foreign_tax_payments")
+                dividends_brl = Decimal(0)
+                withholding_brl = Decimal(0)
+                ptax_service = PtaxService()
+                for ev in div_events:
+                    fx = ev.fx_rate or Decimal(0)
+                    dividends_brl += (ev.amount_usd + ev.tax_usd) * fx
+                    # imposto pago no exterior: PTAX COMPRA na data do pagamento
+                    pagamento = ev.foreign_tax_payments.first()
+                    fx_tax = fx_imposto_exterior(ev, pagamento, ptax_service)
+                    withholding_brl += ev.tax_usd * fx_tax
+                gains_brl = Decimal(0)
+                losses_brl = Decimal(0)
+                for r in PositionService().realized(account, asset, until=yearend):
+                    if r["event"].trade_date.year == self.year:
+                        if r["gain_brl"] > 0:
+                            gains_brl += r["gain_brl"]
+                        else:
+                            losses_brl += -r["gain_brl"]
+                acc["income_brl"] += (dividends_brl + gains_brl - losses_brl).quantize(Decimal("0.01"))
+                acc["custody_brl"] += pos["cost_brl_total"]
                 if pos["quantity"]:
                     prev = PositionService().position(account, asset, until=prev_yearend)
                     cost_usd_total = (pos["avg_cost_usd"] * pos["quantity"]).quantize(Decimal("0.01"))
@@ -66,28 +98,6 @@ class ReportService:
                         pos["cost_brl_total"] / cost_usd_total
                         if cost_usd_total else Decimal(0)
                     ).quantize(Decimal("0.00000001"))
-                    div_events = FinancialEvent.objects.filter(
-                        account=account, asset=asset, active=True,
-                        event_type__in=("DIVIDEND", "JUROS"), trade_date__year=self.year,
-                    ).prefetch_related("foreign_tax_payments")
-                    dividends_brl = Decimal(0)
-                    withholding_brl = Decimal(0)
-                    ptax_service = PtaxService()
-                    for ev in div_events:
-                        fx = ev.fx_rate or Decimal(0)
-                        dividends_brl += (ev.amount_usd + ev.tax_usd) * fx
-                        # imposto pago no exterior: PTAX COMPRA na data do pagamento
-                        pagamento = ev.foreign_tax_payments.first()
-                        fx_tax = fx_imposto_exterior(ev, pagamento, ptax_service)
-                        withholding_brl += ev.tax_usd * fx_tax
-                    gains_brl = Decimal(0)
-                    losses_brl = Decimal(0)
-                    for r in PositionService().realized(account, asset, until=yearend):
-                        if r["event"].trade_date.year == self.year:
-                            if r["gain_brl"] > 0:
-                                gains_brl += r["gain_brl"]
-                            else:
-                                losses_brl += -r["gain_brl"]
                     assets.append({
                         "asset": asset, **pos,
                         "prev_cost_brl": prev["cost_brl_total"],
@@ -123,7 +133,21 @@ class ReportService:
         profile = Profile.objects.first()
         snapshot = AnnualAssessment.objects.filter(year=self.year).first()
         prev_snapshot = AnnualAssessment.objects.filter(year=self.year - 1).first()
+        # RF-PER-004: demonstração da fatia proporcional do contribuinte
+        ownership_attribution = []
+        for account in BrokerAccount.objects.filter(active=True):
+            share = account.ownership_share
+            acc = attrib.get(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0), "cash_brl": Decimal(0)})
+            ownership_attribution.append({
+                "account": account,
+                "ownership_type": account.ownership_type,
+                "share_pct": share,
+                "income_brl_attrib": (acc["income_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
+                "custody_brl_attrib": (acc["custody_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
+                "cash_brl_attrib": (acc.get("cash_brl", Decimal(0)) * share / Decimal(100)).quantize(Decimal("0.01")),
+            })
         return {
+            "ownership_attribution": ownership_attribution,
             "closing": {
                 "is_closed": snapshot is not None,
                 "closed_at": snapshot.computed_at if snapshot else None,

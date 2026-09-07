@@ -16,7 +16,7 @@ INDISPONIVEL = httpx.HTTPStatusError("500", request=mock.Mock(), response=mock.M
 
 
 @pytest.fixture
-def ambiente():
+def ambiente(residente):
     SeedCommand().handle()
     with mock.patch.object(PtaxService, "_fetch_bcb", side_effect=INDISPONIVEL):
         yield

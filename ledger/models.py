@@ -1,5 +1,7 @@
 from datetime import date
+from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 # Taxonomia legal da Lei 14.754/2023 (RF-AST-006/007): sem inferência
@@ -43,6 +45,13 @@ class Asset(models.Model):
         return self.ticker
 
 
+OWNERSHIP_TYPES = [
+    ("INDIVIDUAL", "Individual"),
+    ("JOINT", "Conjunta"),
+    ("THIRD_PARTY", "Terceiros"),
+]
+
+
 class BrokerAccount(models.Model):
     name = models.CharField("apelido do caixa", max_length=128, blank=True)
     broker_name = models.CharField(max_length=128)
@@ -51,7 +60,14 @@ class BrokerAccount(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     account_type = models.CharField(max_length=10, choices=ACCOUNT_TYPES, default="CASH")
     is_interest_bearing = models.BooleanField(default=False)
+    # RF-PER-003: titularidade — fatia do contribuinte em contas conjuntas
+    ownership_type = models.CharField(max_length=12, choices=OWNERSHIP_TYPES, default="INDIVIDUAL")
+    ownership_share = models.DecimalField(max_digits=5, decimal_places=2, default=100)
     active = models.BooleanField(default=True)
+
+    def clean(self):
+        if not (Decimal("0.01") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
+            raise ValidationError("ownership_share deve estar entre 0,01 e 100,00.")
 
     def __str__(self):
         return self.name or f"{self.broker_name} ({self.account_number})"

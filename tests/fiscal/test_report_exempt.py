@@ -12,7 +12,7 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def accounts(db):
+def accounts(db, residente):
     from fiscal.models import TaxRule
     TaxRule.objects.create(tax_year=2026, rule_version="V2",
                            brackets=[{"limit_brl": None, "rate": "0.15"}],

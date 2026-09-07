@@ -19,7 +19,7 @@ def sem_ptax_bcb():
 
 
 @pytest.fixture
-def regra_2026(db):
+def regra_2026(db, residente):
     from fiscal.models import TaxRule
 
     TaxRule.objects.get_or_create(

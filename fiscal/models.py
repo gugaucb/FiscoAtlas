@@ -2,10 +2,24 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 
+RESIDENCY_STATUSES = [
+    ("BRAZIL_RESIDENT", "Residente fiscal pleno no Brasil"),
+    ("NON_RESIDENT", "Não residente"),
+    ("PART_YEAR_RESIDENT", "Residente por parte do ano-calendário"),
+    ("UNKNOWN", "Desconhecida"),
+]
+
+
 class Profile(models.Model):
     """Beneficiário único (single-user, ADR-0002)."""
     name = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14)
+    # RF-PER-001: condição de residência fiscal — pré-condição de apuração
+    # (Lei 14.754/2023 aplica-se a residentes; RF-VAL-001)
+    tax_residency_status = models.CharField(max_length=20, choices=RESIDENCY_STATUSES, default="UNKNOWN")
+    residency_start_date = models.DateField(null=True, blank=True)
+    residency_end_date = models.DateField(null=True, blank=True)
+    has_dsdp = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if Profile.objects.exclude(pk=self.pk).exists():
