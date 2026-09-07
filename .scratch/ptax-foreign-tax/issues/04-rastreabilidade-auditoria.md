@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Cálculo fiscal e relatório separados).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Memória de cálculo registra separadamente: data do rendimento, data da PTAX do rendimento, tipo da cotação, taxa, valor BRL — e data do pagamento do imposto, data da PTAX do imposto, tipo (COMPRA), taxa, valor BRL
 - [ ] Relatório exibe as duas conversões separadamente (dados + cotação + taxa de cada componente)
