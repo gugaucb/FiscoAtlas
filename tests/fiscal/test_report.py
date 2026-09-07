@@ -19,8 +19,8 @@ def setup(db):
         confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31",
     )
     acct = BrokerAccount.objects.create(broker_name="Avenue Securities LLC", account_number="123")
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
-    msft = Asset.objects.create(ticker="MSFT", description="Microsoft", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
+    msft = Asset.objects.create(ticker="MSFT", description="Microsoft", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         EventService().record(dict(account=acct, event_type="APORTE", trade_date=date(2026, 1, 2), amount_usd=Decimal(5000)))
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl, trade_date=date(2026, 1, 3), quantity=Decimal(10), price_usd=Decimal(100), fee_usd=Decimal(1)))

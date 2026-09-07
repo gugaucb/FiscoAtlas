@@ -1,12 +1,19 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+
 from fiscal.date_rules import TaxDateResolver
 from fiscal.models import AnnualAssessment, TaxRule
 from fx.service import PtaxService
-from ledger.models import FinancialEvent
+from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
 
 ZERO = Decimal("0.00")
+
+# Regimes tributários não cobertos pela apuração de aplicação financeira
+# direta (RF-AST-009/RF-VAL-002): exigem regime próprio.
+BLOCKED_ASSET_TYPES = ("CONTROLLED_ENTITY", "TRUST", "UNKNOWN")
 
 
 def _pagamentos_por_evento(events):
@@ -61,7 +68,24 @@ class TaxEngine:
         assessment, _ = AnnualAssessment.objects.update_or_create(year=year, defaults=defaults)
         return assessment
 
+    def _bloquear_ativos_nao_cobertos(self):
+        qs = Asset.objects.filter(
+            Q(events__active=True, events__trade_date__year=self.year)
+            | Q(events__corrected_by__active=True, events__corrected_by__trade_date__year=self.year)
+        ).distinct()
+        bloqueados = [
+            a.ticker for a in qs
+            if a.asset_type in BLOCKED_ASSET_TYPES or a.is_controlled_entity
+        ]
+        if bloqueados:
+            raise ValidationError(
+                "Regime não coberto pela apuração de aplicação financeira direta: "
+                f"ativo(s) {', '.join(sorted(bloqueados))} com natureza jurídica de "
+                "entidade controlada, trust ou desconhecida. A apuração exige regime próprio."
+            )
+
     def compute(self) -> dict:
+        self._bloquear_ativos_nao_cobertos()
         rule = TaxRule.objects.for_year(self.year)
         rate = Decimal(rule.brackets[-1]["rate"])
         events = list(

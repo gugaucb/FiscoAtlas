@@ -16,7 +16,7 @@ def conta_com_buy():
         broker_name="Avenue", account_number="SD", country_code="US",
         is_interest_bearing=True, name="Avenue SD",
     )
-    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK", country_code="US")
+    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY", country_code="US")
     from fx.models import PtaxRate
     from fx.service import PtaxService
     PtaxService().override(date(2026, 1, 10), Decimal("5.4"), "teste")

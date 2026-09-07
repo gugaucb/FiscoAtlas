@@ -5,7 +5,7 @@ import pytest
 
 pw = pytest.importorskip("playwright.sync_api")
 
-from tests.e2e.conftest import PASSWORD
+from tests.e2e.conftest import PASSWORD, cadastrar_ativo
 
 PTAX = {"ptax_manual": "5.4000", "ptax_reason": "E2E: API fora"}
 
@@ -42,6 +42,7 @@ def _evento(page, live_server, etype, campos, conta_label="Avenue E2E"):
 
 def test_fluxo_completo_8_eventos(live_server, page, conta, vault_ready):
     _login(page, live_server)
+    cadastrar_ativo(page, live_server, "AAPL")
 
     _evento(page, live_server, "APORTE", {"trade_date": "2026-01-05", "amount_usd": "10000"})
     _evento(page, live_server, "BUY", {"trade_date": "2026-01-10", "asset_ticker": "AAPL",
@@ -83,6 +84,7 @@ def test_fluxo_completo_8_eventos(live_server, page, conta, vault_ready):
 
 def test_excluir_evento_soft_delete(live_server, page, conta, vault_ready, regra_2026):
     _login(page, live_server)
+    cadastrar_ativo(page, live_server, "AAPL")
     _evento(page, live_server, "BUY", {"trade_date": "2026-01-10", "asset_ticker": "AAPL",
                                        "quantity": "10", "price_usd": "100"})
     page.goto(f"{live_server}/posicoes/")

@@ -27,7 +27,9 @@ def test_aporte_sem_asset(client, account):
     assert ev.amount_usd == Decimal("5000")
 
 
-def test_buy_com_ticker_novo_cria_asset(client, account):
+def test_buy_com_ticker_cadastrado(client, account):
+    # ticket 01: fim da auto-inferência — o ativo precisa existir antes
+    Asset.objects.create(ticker="TSLA", description="Tesla", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         resp = client.post("/eventos/novo/", {
             "event_type": "BUY", "account": account.pk, "asset_ticker": "tsla",
@@ -37,6 +39,16 @@ def test_buy_com_ticker_novo_cria_asset(client, account):
     asset = Asset.objects.get(ticker="TSLA")
     ev = FinancialEvent.objects.get(event_type="BUY")
     assert ev.asset == asset
+
+
+def test_buy_com_ticker_inexistente_rejeitado_sem_auto_criacao(client, account):
+    resp = client.post("/eventos/novo/", {
+        "event_type": "BUY", "account": account.pk, "asset_ticker": "TSLA",
+        "trade_date": "2026-02-01", "quantity": "10", "price_usd": "200",
+    })
+    assert resp.status_code == 200
+    assert "não cadastrado" in resp.content.decode()
+    assert not Asset.objects.filter(ticker="TSLA").exists()
 
 
 def test_labels_em_ptbr(client, account):
@@ -60,7 +72,7 @@ def test_buy_sem_quantidade_rejeitado(client, account):
 
 def test_dividendo_com_valor_por_acao(client, account):
     from ledger.models import Asset
-    Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         resp = client.post("/eventos/novo/", {
             "event_type": "DIVIDEND", "account": account.pk, "asset_ticker": "AAPL",

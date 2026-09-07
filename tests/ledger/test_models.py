@@ -5,9 +5,9 @@ from ledger.models import Asset, BrokerAccount
 
 @pytest.mark.django_db
 def test_asset_unique_ticker():
-    Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="STOCK")
+    Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="FOREIGN_EQUITY")
     with pytest.raises(IntegrityError):
-        Asset.objects.create(ticker="AAPL", description="dup", asset_type="STOCK")
+        Asset.objects.create(ticker="AAPL", description="dup", asset_type="FOREIGN_EQUITY")
 
 
 @pytest.mark.django_db

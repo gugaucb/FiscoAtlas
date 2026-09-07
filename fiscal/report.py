@@ -11,7 +11,11 @@ from ledger.models import Asset, BrokerAccount, FinancialEvent
 from ledger.position import PositionService
 
 # Códigos da ficha Bens e Direitos (DIRPF) — a confirmar com contador
-GRUPO_CODIGO = {"STOCK": "03/01", "ETF": "03/02", "REIT": "03/03", "FUND": "03/99", "BOND": "04/99", "OTHER": "99/99"}
+GRUPO_CODIGO = {
+    "FOREIGN_EQUITY": "03/01", "FOREIGN_ETF": "03/02", "REIT": "03/03",
+    "FOREIGN_FUND": "03/99", "US_TREASURY": "04/99", "FOREIGN_BOND": "04/99",
+    "OTHER": "99/99",
+}
 # Tabela de países da RFB: 249 = Estados Unidos
 COUNTRY_RFB = {"US": ("249", "Estados Unidos")}
 

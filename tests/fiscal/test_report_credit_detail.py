@@ -18,7 +18,7 @@ def setup(db):
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31")
     acct = BrokerAccount.objects.create(broker_name="Avenue", account_number="1")
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         # dividendo: bruto 7 USD (35 BRL), IR EUA 2 USD (10 BRL) — limite 15% = 5,25
         EventService().record(dict(account=acct, event_type="DIVIDEND", asset=aapl,

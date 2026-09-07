@@ -28,7 +28,7 @@ def _account():
 
 def test_prejuizo_herdado_do_ano_anterior(rules):
     acct = _account()
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         # 2025: compra 10 @100 (5000 BRL), vende 10 @80 (4000 BRL) → prejuízo 1000 BRL
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl,
@@ -64,7 +64,7 @@ def test_sem_ano_anterior_nao_herde(rules):
 
 def test_relatorio_mostra_reconciliacao(rules):
     acct = _account()
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl,
                                    trade_date=date(2025, 1, 5), quantity=Decimal(10), price_usd=Decimal(100)))

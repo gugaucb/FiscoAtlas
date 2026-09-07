@@ -87,11 +87,15 @@ class EventForm(forms.ModelForm):
         ticker = (self.cleaned_data.get("asset_ticker") or "").strip().upper()
         if not ticker:
             return None
-        asset, _ = Asset.objects.get_or_create(
-            ticker=ticker,
-            defaults={"description": ticker, "asset_type": "STOCK", "country_code": "US"},
-        )
-        return asset
+        # RF-AST-003: sem auto-criação silenciosa — o ativo deve ser
+        # cadastrado explicitamente com sua natureza jurídica.
+        try:
+            return Asset.objects.get(ticker=ticker, active=True)
+        except Asset.DoesNotExist:
+            raise forms.ValidationError(
+                f"Ativo {ticker} não cadastrado. Cadastre-o explicitamente em "
+                "ativos/novo/ antes de lançar eventos."
+            )
 
     def clean(self):
         cleaned = super().clean()
@@ -122,3 +126,35 @@ class EventForm(forms.ModelForm):
                     "Informe a fonte documental da data do imposto no exterior.",
                 )
         return cleaned
+
+
+class AssetForm(forms.ModelForm):
+    """Cadastro explícito de ativo com natureza jurídica legal (RF-AST-003/006)."""
+
+    class Meta:
+        model = Asset
+        fields = ["ticker", "description", "asset_type", "country_code",
+                  "is_controlled_entity", "ownership_share_pct"]
+        labels = {
+            "ticker": "Ticker",
+            "description": "Descrição",
+            "asset_type": "Natureza jurídica",
+            "country_code": "País",
+            "is_controlled_entity": "Entidade controlada (offshore)",
+            "ownership_share_pct": "Participação do contribuinte (%)",
+        }
+        widgets = {"description": forms.TextInput(attrs={"size": 40})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["ownership_share_pct"].required = False
+        self.fields["is_controlled_entity"].required = False
+
+    def clean_ticker(self):
+        return (self.cleaned_data.get("ticker") or "").strip().upper()
+
+    def clean_ownership_share_pct(self):
+        pct = self.cleaned_data.get("ownership_share_pct")
+        if pct is not None and not (Decimal(0) <= pct <= Decimal(100)):
+            raise forms.ValidationError("Participação deve estar entre 0 e 100.")
+        return pct

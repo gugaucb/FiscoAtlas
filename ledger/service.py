@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from fx.service import PtaxService
-from ledger.models import FinancialEvent, ForeignTaxPayment
+from ledger.models import Asset, FinancialEvent, ForeignTaxPayment
 from ledger.position import PositionService
 
 TOL = Decimal("0.01")
@@ -36,6 +36,15 @@ class EventService:
         qty, price = data.get("quantity"), data.get("price_usd")
         fee = data.get("fee_usd") or Decimal(0)
         tax = data.get("tax_usd") or Decimal(0)
+
+        # RF-AST-003: ativo deve existir; sem auto-criação silenciosa.
+        if not data.get("asset") and data.get("asset_ticker"):
+            ticker = str(data["asset_ticker"]).strip().upper()
+            try:
+                data["asset"] = Asset.objects.get(ticker=ticker, active=True)
+            except Asset.DoesNotExist:
+                raise ValueError(f"Ativo {ticker} não cadastrado; cadastre-o explicitamente antes do lançamento.")
+            data.pop("asset_ticker")
 
         if etype == "JUROS" and not data["account"].is_interest_bearing:
             raise ValueError("JUROS só é válido em conta remunerada; conta não remunerada")
