@@ -195,3 +195,18 @@ class OpeningPosition(models.Model):
     @property
     def average_cost_brl(self):
         return self.total_cost_brl / self.quantity if self.quantity else Decimal(0)
+
+
+class ImportBatch(models.Model):
+    """RF-IMP-002/004: lote de importação de extrato. O hash SHA-256 do
+    arquivo garante idempotência (CT-030): mesmo arquivo não reimporta."""
+
+    account = models.ForeignKey(BrokerAccount, on_delete=models.PROTECT, related_name="import_batches")
+    source = models.CharField(max_length=32, default="SCHWAB")
+    file_hash = models.CharField(max_length=64, unique=True)
+    events_created = models.PositiveIntegerField(default=0)
+    rows_total = models.PositiveIntegerField(default=0)
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.source} {self.imported_at:%d/%m/%Y %H:%M} (+{self.events_created})"
