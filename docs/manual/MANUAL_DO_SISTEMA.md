@@ -574,6 +574,8 @@ flowchart TD
 | 3 | Criar Conta A (Interactive Brokers) e Conta B (Charles Schwab) | ✅ 2 contas ativas |
 | 4 | Cadastrar ativos AAPL e LOSS | ✅ 2 ativos registrados |
 | 5 | Registrar 7 eventos (aportes, compras, dividendo, vendas) | ✅ Todos com PTAX automática |
+
+> **Nota**: para que o fechamento do ano seja aprovado, o imposto retido no exterior do exemplo deve ficar dentro do teto de 15% do rendimento bruto (Lei 14.754/2023, art. 5º) — ex.: dividendo de US$ 200 com IR de US$ 20 (10%). Uma retenção de US$ 60 (30%) é válida como lançamento, mas o fechamento será bloqueado pelo validador (RF-VAL-008), com as violações exibidas na tela.
 | 6 | Verificar posições (AAPL: 50 ações restantes) | ✅ Custo médio correto |
 | 7 | Executar apuração 2026 | ✅ IR calculado: R$ 434,78 |
 | 8 | Fechar ano 2026 | ✅ Validações aprovadas |
