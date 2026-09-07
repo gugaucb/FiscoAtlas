@@ -5,6 +5,7 @@ from django.db.models import Sum
 
 from fiscal.cbe import CbeService
 from fiscal.engine import TaxEngine, fx_imposto_exterior
+from fiscal.high_income import HighIncomeService
 from fiscal.models import AnnualAssessment, Profile
 from fx.service import PtaxService
 from ledger.cash import INFLOWS, CashLedgerService
@@ -151,6 +152,7 @@ class ReportService:
         return {
             "ownership_attribution": ownership_attribution,
             "cbe": CbeService(self.year).evaluate(),
+            "high_income": HighIncomeService(self.year).evaluate(),
             "closing": {
                 "is_closed": snapshot is not None,
                 "closed_at": snapshot.computed_at if snapshot else None,
