@@ -18,7 +18,7 @@ def setup(db):
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31")
     acct = BrokerAccount.objects.create(broker_name="Avenue Securities LLC", account_number="123")
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         # posição 2025: 20 ações, custo 20*90*5 = 9000
         EventService().record(dict(account=acct, event_type="APORTE", trade_date=date(2025, 1, 2), amount_usd=Decimal(5000)))

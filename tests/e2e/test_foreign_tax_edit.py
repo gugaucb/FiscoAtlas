@@ -4,7 +4,7 @@ import pytest
 
 pw = pytest.importorskip("playwright.sync_api")
 
-from tests.e2e.conftest import PASSWORD, novo_evento
+from tests.e2e.conftest import PASSWORD, cadastrar_ativo, novo_evento
 
 
 def test_edicao_com_trilha(live_server, page, conta, vault_ready):
@@ -12,6 +12,8 @@ def test_edicao_com_trilha(live_server, page, conta, vault_ready):
     page.fill("#password", PASSWORD)
     page.click("button[type=submit]")
     page.wait_for_url(f"{live_server}/")
+
+    cadastrar_ativo(page, live_server, "AAPL")
 
     # dividendo 10/03 com imposto pago 12/03
     novo_evento(page, live_server, "DIVIDEND", {

@@ -34,7 +34,7 @@
       </div>
       {% endif %}
     {% endfor %}
-    <p class="help">Os campos exibidos se ajustam ao tipo de evento escolhido. Para ativo novo, digite o ticker — ele será cadastrado automaticamente.</p>
+    <p class="help">Os campos exibidos se ajustam ao tipo de evento escolhido. Só é possível lançar eventos para ativos já cadastrados — <a href="{% url 'asset-create' %}">cadastre um ativo</a> com sua natureza jurídica antes.</p>
     <button type="submit" class="btn">Registrar</button>
   </form>
 </div>

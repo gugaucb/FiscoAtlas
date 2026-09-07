@@ -79,7 +79,18 @@ def novo_evento(page, live_server, etype, campos, conta_label="Avenue E2E"):
         raise AssertionError(f"form de {etype} inválido: {erros} | URL: {page.url} | {corpo}")
 
 
+def cadastrar_ativo(page, live_server, ticker="AAPL", asset_type="FOREIGN_EQUITY"):
+    """Cadastro explícito de ativo (ticket 01): sem auto-criação no formulário de eventos."""
+    page.goto(f"{live_server}/ativos/novo/")
+    page.fill("#id_ticker", ticker)
+    page.fill("#id_description", f"Descrição {ticker}")
+    page.select_option("#id_asset_type", asset_type)
+    page.click("#save-asset")
+    page.wait_for_url(f"{live_server}/eventos/novo/", timeout=5000)
+
+
 def seed_8_eventos(page, live_server):
+    cadastrar_ativo(page, live_server, "AAPL")
     novo_evento(page, live_server, "APORTE", {"trade_date": "2026-01-05", "amount_usd": "10000"})
     novo_evento(page, live_server, "BUY", {"trade_date": "2026-01-10", "asset_ticker": "AAPL",
                                            "quantity": "100", "price_usd": "100", "fee_usd": "1"})

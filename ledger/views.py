@@ -4,10 +4,22 @@ from django.urls import reverse_lazy
 from django.views import generic
 
 from ledger.cash import CashLedgerService
-from ledger.forms import EventForm, ForeignTaxPaymentForm
+from ledger.forms import AssetForm, EventForm, ForeignTaxPaymentForm
 from ledger.models import Asset, FinancialEvent, ForeignTaxPayment
 from ledger.position import PositionService
 from ledger.service import EventService
+
+
+class AssetCreateView(generic.CreateView):
+    """Cadastro explícito de ativo (RF-AST-003): natureza jurídica obrigatória,
+    sem inferência silenciosa de tipo."""
+    form_class = AssetForm
+    template_name = "ledger/asset_form.html"
+    success_url = reverse_lazy("event-create")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Ativo cadastrado.")
+        return super().form_valid(form)
 
 
 class EventListView(generic.ListView):

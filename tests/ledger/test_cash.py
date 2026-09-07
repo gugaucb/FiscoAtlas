@@ -21,7 +21,7 @@ def _record(acct, **kw):
 
 @pytest.mark.django_db
 def test_balance_with_buy_and_dividend(acct, db):
-    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     _record(acct, event_type="APORTE", trade_date=date(2026, 1, 2), amount_usd=Decimal(5000))
     _record(acct, event_type="BUY", asset=asset, trade_date=date(2026, 1, 3),
             quantity=Decimal(10), price_usd=Decimal(100), fee_usd=Decimal(1))

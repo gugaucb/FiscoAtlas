@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def setup(db):
     acct = BrokerAccount.objects.create(broker_name="Avenue Securities LLC", account_number="123")
-    aapl = Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="STOCK")
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         # compra 1: 10 @180, compra 2: 5 @190, venda 8 @200, dividendo
         EventService().record(dict(account=acct, event_type="BUY", asset=aapl, trade_date=date(2026, 1, 10),

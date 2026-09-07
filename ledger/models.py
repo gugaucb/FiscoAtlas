@@ -2,7 +2,19 @@ from datetime import date
 
 from django.db import models
 
-ASSET_TYPES = [("STOCK", "Ação"), ("ETF", "ETF"), ("REIT", "REIT"), ("BOND", "Bond"), ("FUND", "Fundo"), ("OTHER", "Outro")]
+# Taxonomia legal da Lei 14.754/2023 (RF-AST-006/007): sem inferência
+# silenciosa — todo ativo é cadastrado explicitamente com sua natureza.
+ASSET_TYPES = [
+    ("FOREIGN_EQUITY", "Ação estrangeira"),
+    ("FOREIGN_ETF", "ETF estrangeiro"),
+    ("REIT", "REIT"),
+    ("US_TREASURY", "Treasury americano"),
+    ("FOREIGN_BOND", "Título de dívida estrangeiro"),
+    ("FOREIGN_FUND", "Fundo estrangeiro"),
+    ("CONTROLLED_ENTITY", "Entidade controlada (offshore)"),
+    ("TRUST", "Trust"),
+    ("UNKNOWN", "Desconhecida"),
+]
 ACCOUNT_TYPES = [("CASH", "Cash"), ("CUSTODY", "Custódia"), ("MARGIN", "Margem"), ("OTHER", "Outro")]
 EVENT_TYPES = [
     ("APORTE", "Aporte (entrada de caixa)"),
@@ -19,10 +31,12 @@ EVENT_TYPES = [
 class Asset(models.Model):
     ticker = models.CharField(max_length=32, unique=True)
     description = models.CharField(max_length=255)
-    asset_type = models.CharField(max_length=10, choices=ASSET_TYPES)
+    asset_type = models.CharField(max_length=32, choices=ASSET_TYPES)
     isin = models.CharField(max_length=12, null=True, blank=True)
     currency = models.CharField(max_length=3, default="USD")
     country_code = models.CharField(max_length=2, default="US")
+    is_controlled_entity = models.BooleanField(default=False)
+    ownership_share_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     active = models.BooleanField(default=True)
 
     def __str__(self):

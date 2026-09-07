@@ -11,7 +11,7 @@ RATE = Decimal("5.00000000")
 @pytest.fixture
 def db_assets(db):
     acct = BrokerAccount.objects.create(broker_name="Avenue", account_number="1")
-    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     return acct, asset
 
 

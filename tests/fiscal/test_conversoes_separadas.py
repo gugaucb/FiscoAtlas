@@ -40,7 +40,7 @@ def regra_2026():
 def dividendo_12_03():
     from ledger.models import Asset
     conta = BrokerAccount.objects.create(broker_name="Avenue", account_number="1")
-    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         EventService().record(dict(
             event_type="BUY", account=conta, asset=asset, trade_date=date(2026, 1, 5),

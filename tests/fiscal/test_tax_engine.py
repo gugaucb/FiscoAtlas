@@ -18,7 +18,7 @@ def setup(db):
         confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31",
     )
     acct = BrokerAccount.objects.create(broker_name="Avenue", account_number="1")
-    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     return acct, asset
 
 

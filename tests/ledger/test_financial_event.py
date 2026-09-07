@@ -9,7 +9,7 @@ def account(db):
 
 @pytest.fixture
 def asset(db):
-    return Asset.objects.create(ticker="AAPL", description="Apple", asset_type="STOCK")
+    return Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
 
 
 def _event(account, asset, **kw):
