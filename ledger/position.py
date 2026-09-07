@@ -33,7 +33,12 @@ class PositionService:
                 cost_usd += ev.quantity * ev.price_usd + ev.fee_usd
                 cost_brl += abs(ev.amount_brl)
                 qty += ev.quantity
-            elif ev.event_type == "SELL":
+            elif ev.event_type in ("STOCK_SPLIT", "REVERSE_SPLIT"):
+                # RF-CA-002: quantidade × razão; custo total BRL inalterado
+                razao = ev.split_ratio_to / ev.split_ratio_from
+                qty = qty * razao
+                # custos totais (USD e BRL) preservados; unitário se ajusta
+            elif ev.event_type in ("SELL", "CASH_IN_LIEU"):
                 avg = cost_usd / qty if qty else Decimal(0)
                 avg_brl = cost_brl / qty if qty else Decimal(0)
                 sold_qty = ev.quantity
@@ -46,7 +51,7 @@ class PositionService:
     def realized(self, account, asset, until=None) -> list[dict]:
         """Resultado em BRL por venda: alienação BRL (PTAX da venda) − custo
         baixado BRL (PTAX da compra). A variação cambial integra o rendimento
-        (Lei 14.754/2023, art. 3º, II)."""
+        (Lei 14.754/2023, art. 3º, II). Cash-in-lieu apura como alienação."""
         qty = Decimal(0)
         cost_usd = Decimal(0)
         cost_brl = Decimal(0)
@@ -55,7 +60,8 @@ class PositionService:
         cost_brl = opening["cost_brl"]
         out = []
         events = FinancialEvent.objects.filter(
-            account=account, asset=asset, active=True, event_type__in=("BUY", "SELL")
+            account=account, asset=asset, active=True,
+            event_type__in=("BUY", "SELL", "STOCK_SPLIT", "REVERSE_SPLIT", "CASH_IN_LIEU"),
         )
         if until:
             events = events.filter(trade_date__lte=until)
@@ -65,6 +71,10 @@ class PositionService:
                 cost_usd += ev.quantity * ev.price_usd + ev.fee_usd
                 cost_brl += abs(ev.amount_brl or 0)
                 qty += ev.quantity
+            elif ev.event_type in ("STOCK_SPLIT", "REVERSE_SPLIT"):
+                razao = ev.split_ratio_to / ev.split_ratio_from
+                qty = qty * razao
+                # custos totais (USD e BRL) preservados; unitário se ajusta
             else:
                 avg_usd = cost_usd / qty if qty else Decimal(0)
                 avg_brl = cost_brl / qty if qty else Decimal(0)

@@ -15,6 +15,8 @@ LABELS = {
     "fee_usd": "Taxas (USD)",
     "tax_usd": "Imposto retido (USD)",
     "amount_usd": "Valor (USD)",
+    "split_ratio_from": "Razão de (ações)",
+    "split_ratio_to": "Razão para (ações)",
     "notes": "Observações",
 }
 
@@ -27,6 +29,9 @@ REQUIRED_BY_TYPE = {
     "BUY": ["account", "asset_ticker", "trade_date", "quantity", "price_usd"],
     "SELL": ["account", "asset_ticker", "trade_date", "quantity", "price_usd"],
     "DIVIDEND": ["account", "asset_ticker", "trade_date", "quantity", "per_share_usd"],
+    "STOCK_SPLIT": ["account", "asset_ticker", "trade_date", "split_ratio_from", "split_ratio_to"],
+    "REVERSE_SPLIT": ["account", "asset_ticker", "trade_date", "split_ratio_from", "split_ratio_to"],
+    "CASH_IN_LIEU": ["account", "asset_ticker", "trade_date", "quantity", "amount_usd"],
 }
 
 
@@ -65,11 +70,14 @@ class EventForm(forms.ModelForm):
     class Meta:
         model = FinancialEvent
         fields = ["event_type", "account", "trade_date", "quantity",
-                  "price_usd", "fee_usd", "tax_usd", "amount_usd", "notes"]
+                  "price_usd", "fee_usd", "tax_usd", "amount_usd",
+                  "split_ratio_from", "split_ratio_to", "notes"]
         labels = {"event_type": LABELS["event_type"], "account": LABELS["account"],
                   "trade_date": LABELS["trade_date"], "quantity": LABELS["quantity"],
                   "price_usd": LABELS["price_usd"], "fee_usd": LABELS["fee_usd"],
                   "tax_usd": LABELS["tax_usd"], "amount_usd": LABELS["amount_usd"],
+                  "split_ratio_from": LABELS["split_ratio_from"],
+                  "split_ratio_to": LABELS["split_ratio_to"],
                   "notes": LABELS["notes"]}
         widgets = {"trade_date": forms.DateInput(attrs={"type": "date"})}
 

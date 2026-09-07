@@ -107,7 +107,7 @@ class TaxEngine:
         events = list(
             FinancialEvent.objects.filter(
                 active=True, trade_date__year=self.year,
-                event_type__in=("DIVIDEND", "JUROS", "SELL"),
+                event_type__in=("DIVIDEND", "JUROS", "SELL", "CASH_IN_LIEU"),
             ).select_related("asset").order_by("trade_date", "id")
         )
 
@@ -128,7 +128,7 @@ class TaxEngine:
         pagamentos = _pagamentos_por_evento(events)
         for ev in events:
             fx = ev.fx_rate or ZERO
-            if ev.event_type == "SELL":
+            if ev.event_type in ("SELL", "CASH_IN_LIEU"):
                 r = realized_idx.get(ev.id)
                 if r is None:
                     continue

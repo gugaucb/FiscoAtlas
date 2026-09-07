@@ -27,6 +27,11 @@ EVENT_TYPES = [
     ("JUROS", "Juros/rendimento de caixa"),
     ("FEE", "Taxa/corretagem"),
     ("TAX_WITHHELD", "Imposto retido nos EUA"),
+    # Corporate actions (RF-CA-001..003): o split altera quantidade e custo
+    # unitário; o custo total histórico em BRL permanece inalterado.
+    ("STOCK_SPLIT", "Desdobramento (split)"),
+    ("REVERSE_SPLIT", "Grupamento (reverse split)"),
+    ("CASH_IN_LIEU", "Fração paga em dinheiro (cash-in-lieu)"),
 ]
 
 
@@ -89,6 +94,10 @@ class FinancialEvent(models.Model):
     fx_rate = models.DecimalField(max_digits=12, decimal_places=8, null=True, blank=True)
     amount_brl = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     notes = models.CharField(max_length=500, blank=True)
+    # corporate actions: razão do split (de "from" ações para "to" ações;
+    # ex.: 1→2 desdobramento, 10→1 grupamento)
+    split_ratio_from = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
+    split_ratio_to = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
     corrects = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="corrected_by")
     created_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)
