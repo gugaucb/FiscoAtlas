@@ -44,6 +44,22 @@
 </div>
 <p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})
   <a href="?ptax=editar">editar</a></em></p>
+{% if report.cbe %}
+<div class="card" role="status">
+  <h2>CBE — Banco Central (data-base 31/12)</h2>
+  <p>
+    Capitais no exterior: US$ {{ report.cbe.total_usd }} —
+    {% if report.cbe.status == "CBE_REQUIRED" %}
+      <strong>declaração obrigatória{% if report.cbe.quarterly %} trimestral (≥ US$ 100.000.000){% else %} anual (Res. BCB 278/2022){% endif %}</strong>.
+    {% elif report.cbe.status == "CBE_NOT_REQUIRED" %}
+      não obrigatória (completude patrimonial declarada).
+    {% else %}
+      <strong>indeterminada</strong> — a plataforma não enxerga bens fora dela.
+      Declare a completude patrimonial no perfil se não houver outros capitais.
+    {% endif %}
+  </p>
+</div>
+{% endif %}
 {% if ptax_form %}
 <div class="card">
   <h2>Editar PTAX de fechamento 31/12/{{ year }}</h2>
