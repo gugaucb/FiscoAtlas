@@ -126,6 +126,7 @@ class ReportService:
                 "fx_income": d["fx_income"],
                 "fx_tax": d["fx_tax"],
                 "tax_payment_date": d["tax_payment_date"],
+                "credit_eligible": d.get("credit_eligible", True),
             }
             for d in income["detail"] if d["withholding_brl"] > 0
         ]

@@ -15,6 +15,12 @@ ZERO = Decimal("0.00")
 # direta (RF-AST-009/RF-VAL-002): exigem regime próprio.
 BLOCKED_ASSET_TYPES = ("CONTROLLED_ENTITY", "TRUST", "UNKNOWN")
 
+# RF-FTC-002/003 (Lei 14.754/2023, art. 4º): a compensação decorre de
+# reciprocidade de tratamento para tributos FEDERAIS sobre a renda.
+# Imposto estadual/municipal (ex.: State/Local Income Tax dos EUA) não é
+# elegível; países fora da lista também não geram crédito.
+RECIPROCITY_COUNTRIES = {"US"}
+
 
 def _pagamentos_por_evento(events):
     """Mapa event_id → ForeignTaxPayment (fatos do imposto no exterior)."""
@@ -118,6 +124,7 @@ class TaxEngine:
         income = ZERO
         loss = ZERO
         credit = ZERO
+        ineligible_foreign_tax = ZERO
         pagamentos = _pagamentos_por_evento(events)
         for ev in events:
             fx = ev.fx_rate or ZERO
@@ -143,11 +150,23 @@ class TaxEngine:
                 # imposto pago no exterior: PTAX COMPRA na data do pagamento
                 fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
                 wh_brl = (ev.tax_usd * fx_tax).quantize(Decimal("0.01"))
-                used = min(wh_brl, (gross_brl * rate).quantize(Decimal("0.01")))
+                # elegibilidade (RF-FTC-002/003): só tributo federal de país
+                # com reciprocidade; evento legado sem pagamento é mantido.
+                if pagamento is not None:
+                    eligible = (
+                        pagamento.jurisdiction_level == "FEDERAL"
+                        and pagamento.country_code in RECIPROCITY_COUNTRIES
+                    )
+                else:
+                    eligible = True
+                used = min(wh_brl, (gross_brl * rate).quantize(Decimal("0.01"))) if eligible else ZERO
                 credit += used
+                if not eligible:
+                    ineligible_foreign_tax += wh_brl
                 detail.append({
                     "event": ev, "kind": ev.event_type.lower(), "gross_brl": gross_brl,
                     "withholding_brl": wh_brl, "credit_used": used,
+                    "credit_eligible": eligible,
                     "fx_income": fx, "fx_tax": fx_tax,
                     "tax_payment_date": pagamento.foreign_tax_payment_date if pagamento else ev.trade_date,
                 })
@@ -176,6 +195,7 @@ class TaxEngine:
             "taxable_brl": taxable,
             "tax_brl": tax,
             "withholding_credit_brl": credit,
+            "ineligible_foreign_tax_brl": ineligible_foreign_tax,
             "tax_due_brl": max(tax - credit, ZERO),
             "loss_carryforward_brl": excess_loss,
             "detail": detail,
