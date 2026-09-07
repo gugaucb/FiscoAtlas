@@ -6,11 +6,11 @@
 **Branch:** `feat/corporate-actions-split`.
 
 **Blocked by:** None (can start immediately — toca ledger, independente de 01–03; executado após 03 na ordem linear).
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] CT-016: 10 @ US$100 (PTAX 5 = R$5.000) + split 2:1 → 20 ações, custo BRL R$5.000, custo médio R$250
-- [ ] Venda de 15 ações pós-split baixa 15 × R$250 e apura ganho/perda
-- [ ] CT-017: reverse 1:10 com cash-in-lieu de fração gera baixa de custo e apuração proporcional
-- [ ] EVENT_TYPES += STOCK_SPLIT, REVERSE_SPLIT, CASH_IN_LIEU; campos split_ratio_from/to
-- [ ] EventService.record/EventForm aceitam splits sem exigir price_usd
-- [ ] Suíte completa verde
+- [x] CT-016: 10 @ US$100 (PTAX 5 = R$5.000) + split 2:1 → 20 ações, custo BRL R$5.000, custo médio R$250
+- [x] Venda de 15 ações pós-split baixa 15 × R$250 e apura ganho/perda
+- [x] CT-017: reverse 1:10 com cash-in-lieu de fração gera baixa de custo e apuração proporcional
+- [x] EVENT_TYPES += STOCK_SPLIT, REVERSE_SPLIT, CASH_IN_LIEU; campos split_ratio_from/to
+- [x] EventService.record/EventForm aceitam splits sem exigir price_usd
+- [x] Suíte completa verde

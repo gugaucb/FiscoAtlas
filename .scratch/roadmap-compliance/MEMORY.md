@@ -4,7 +4,7 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
 
 ## Estado
 
-- Fase 1 (P0): 3/5 concluídos
+- Fase 1 (P0): 4/5 concluídos
 - Fase 2 (P1): 0/5 — fora do ciclo atual
 - Fase 3 (P2): 0/3 — fora do ciclo atual
 
@@ -35,6 +35,14 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Evento legado (sem ForeignTaxPayment) mantém crédito durante a transição — punir eventos históricos mudaria apurações passadas sem base documental nova.
   - Segregação: engine agrega `ineligible_foreign_tax_brl`; report/template exibem o total não elegível e flag por linha.
   - Desvio do roadmap: nenhum.
+
+### 2026-09-07 — Ticket 04: corporate actions (resolved)
+- Branch `feat/corporate-actions-split`; suíte: 261 passed.
+- Decisões:
+  - Splits preservam o CUSTO TOTAL (USD e BRL), não o unitário — bug detectado no TDD: escalonar o custo pelo ratio duplicava perda de base; correto é multiplicar só a quantidade (unitário se ajusta naturalmente).
+  - CASH_IN_LIEU tratado como alienação em TODAS as camadas: posição (baixa de custo + posição suficiente), realized (sale = amount_usd × PTAX) e engine (gain/loss, não rendimento) — bug de rota no engine (caía no ramo DIVIDEND) pego no TDD.
+  - Razão do split obrigatória em EventService (ValueError) e EventForm/REQUIRED_BY_TYPE; sem preço/valor. UI: FIELDS JS por tipo.
+  - Desvio do roadmap: nenhum material.
 
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
