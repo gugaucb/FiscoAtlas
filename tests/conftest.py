@@ -13,3 +13,13 @@ def client(client, db):
         svc.setup(TEST_PASSWORD)
     client.post("/desbloquear/", {"password": TEST_PASSWORD})
     return client
+
+
+@pytest.fixture
+def residente(db):
+    """Perfil residente fiscal pleno (RF-PER-001): pré-condição de apuração."""
+    from fiscal.models import Profile
+
+    return Profile.objects.create(
+        name="Gustavo", cpf="000.000.000-00", tax_residency_status="BRAZIL_RESIDENT"
+    )

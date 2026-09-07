@@ -8,8 +8,25 @@ from fiscal.models import Profile
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ["name", "cpf"]
-        labels = {"name": "Nome completo", "cpf": "CPF"}
+        fields = ["name", "cpf", "tax_residency_status", "residency_start_date",
+                  "residency_end_date", "has_dsdp"]
+        labels = {
+            "name": "Nome completo",
+            "cpf": "CPF",
+            "tax_residency_status": "Condição de residência fiscal",
+            "residency_start_date": "Início da residência",
+            "residency_end_date": "Fim da residência (se aplicável)",
+            "has_dsdp": "Houve mudança de residência (DSDP) no período",
+        }
+        widgets = {
+            "residency_start_date": forms.DateInput(attrs={"type": "date"}),
+            "residency_end_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # default do modelo (UNKNOWN): ausência de resposta não bloqueia o form
+        self.fields["tax_residency_status"].required = False
 
 
 class ProfileView(generic.FormView):
@@ -20,14 +37,17 @@ class ProfileView(generic.FormView):
     def get_initial(self):
         profile = Profile.objects.first()
         if profile:
-            return {"name": profile.name, "cpf": profile.cpf}
+            return {f: getattr(profile, f) for f in
+                    ("name", "cpf", "tax_residency_status", "residency_start_date",
+                     "residency_end_date", "has_dsdp")}
         return {}
 
     def form_valid(self, form):
         profile = Profile.objects.first()
         if profile:
-            profile.name = form.cleaned_data["name"]
-            profile.cpf = form.cleaned_data["cpf"]
+            for f in ("name", "cpf", "tax_residency_status", "residency_start_date",
+                      "residency_end_date", "has_dsdp"):
+                setattr(profile, f, form.cleaned_data[f])
             profile.save()
         else:
             form.save()

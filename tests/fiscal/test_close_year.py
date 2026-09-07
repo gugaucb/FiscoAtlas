@@ -5,7 +5,7 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def rules(db):
+def rules(db, residente):
     TaxRule.objects.create(tax_year=2025, rule_version="V2",
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True,

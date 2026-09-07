@@ -27,7 +27,7 @@ RATE = Decimal("5.00")
 
 
 @pytest.fixture(autouse=True)
-def regra_2026():
+def regra_2026(residente):
     from fiscal.management.commands.seed_tax_rules import BRACKETS
     TaxRule.objects.create(
         tax_year=2026, rule_version="TEST", brackets=BRACKETS,

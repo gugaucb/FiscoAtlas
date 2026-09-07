@@ -18,7 +18,7 @@ SELL_FX = Decimal("6.00000000")  # PTAX na venda (dólar subiu)
 
 
 @pytest.fixture
-def acct_asset(db):
+def acct_asset(db, residente):
     TaxRule.objects.create(
         tax_year=2026, rule_version="V2",
         brackets=[{"limit_brl": None, "rate": "0.15"}],

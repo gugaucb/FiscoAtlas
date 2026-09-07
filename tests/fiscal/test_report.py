@@ -12,7 +12,7 @@ RATE = Decimal("5.00000000")
 
 
 @pytest.fixture
-def setup(db):
+def setup(db, residente):
     TaxRule.objects.create(
         tax_year=2026, rule_version="V2",
         brackets=[{"limit_brl": None, "rate": "0.15"}],

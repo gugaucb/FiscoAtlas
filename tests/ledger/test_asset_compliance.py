@@ -32,7 +32,7 @@ def conta():
 
 
 @pytest.fixture
-def regra_2026():
+def regra_2026(residente):
     from fiscal.models import TaxRule
     return TaxRule.objects.create(
         tax_year=2026, rule_version="V2",

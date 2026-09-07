@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from fiscal.date_rules import TaxDateResolver
-from fiscal.models import AnnualAssessment, TaxRule
+from fiscal.models import AnnualAssessment, Profile, TaxRule
 from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
@@ -84,7 +84,17 @@ class TaxEngine:
                 "entidade controlada, trust ou desconhecida. A apuração exige regime próprio."
             )
 
+    def _exigir_residente_fiscal(self):
+        """RF-PER-002 / RF-VAL-001: a apuração (Lei 14.754/2023) exige
+        residência fiscal plena no Brasil — trava bloqueante."""
+        profile = Profile.objects.first()
+        if profile is None or profile.tax_residency_status != "BRAZIL_RESIDENT":
+            raise ValidationError(
+                "Contribuinte não qualificado como residente fiscal pleno no Brasil."
+            )
+
     def compute(self) -> dict:
+        self._exigir_residente_fiscal()
         self._bloquear_ativos_nao_cobertos()
         rule = TaxRule.objects.for_year(self.year)
         rate = Decimal(rule.brackets[-1]["rate"])

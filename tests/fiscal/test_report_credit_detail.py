@@ -13,7 +13,7 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def setup(db):
+def setup(db, residente):
     TaxRule.objects.create(tax_year=2026, rule_version="V2",
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31")
@@ -41,7 +41,7 @@ def test_credito_detalhado_com_limite(setup):
     assert r["credit_unused_brl"] == Decimal("4.75")  # descartado — sem carryforward
 
 
-def test_sem_rendimentos_lista_vazia(db):
+def test_sem_rendimentos_lista_vazia(db, residente):
     TaxRule.objects.create(tax_year=2026, rule_version="V2",
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31")

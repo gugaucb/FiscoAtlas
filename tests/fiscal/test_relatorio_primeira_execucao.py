@@ -15,7 +15,7 @@ INDISPONIVEL = httpx.HTTPStatusError("500", request=mock.Mock(), response=mock.M
 
 
 @pytest.fixture
-def banco_novo_sem_regras():
+def banco_novo_sem_regras(residente):
     """Simula o primeiro boot do Docker: nenhuma TaxRule no banco."""
     from fiscal.models import TaxRule
     TaxRule.objects.all().delete()

@@ -23,7 +23,7 @@ def setup(db):
     TaxRule.objects.create(tax_year=2026, rule_version="V2",
                            brackets=[{"limit_brl": None, "rate": "0.15"}],
                            confirmed=True, effective_from="2026-01-01", effective_until="2026-12-31")
-    Profile.objects.create(name="Gustavo", cpf="000.000.000-00")
+    Profile.objects.create(name="Gustavo", cpf="000.000.000-00", tax_residency_status="BRAZIL_RESIDENT")
     acct = BrokerAccount.objects.create(broker_name="Avenue Securities LLC", account_number="123")
     asset = Asset.objects.create(ticker="AAPL", description="Apple Inc.", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
