@@ -90,3 +90,35 @@ class AnnualAssessment(models.Model):
     detail = models.JSONField(default=list)
     computed_at = models.DateTimeField(auto_now=True)
     confirmed = models.BooleanField(default=False)
+
+
+class LossRecord(models.Model):
+    """RF-LOS-006: prejuízo rastreável até o evento de alienação e o ano de
+    origem. O saldo remanescente é atualizado a cada compensação (FIFO)."""
+
+    origin_year = models.PositiveIntegerField()
+    source_event = models.ForeignKey(
+        "ledger.FinancialEvent", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="loss_records",
+    )
+    description = models.CharField(max_length=255, blank=True)
+    amount_brl = models.DecimalField(max_digits=20, decimal_places=2)
+    remaining_brl = models.DecimalField(max_digits=20, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Perda {self.origin_year}: R$ {self.remaining_brl} a compensar"
+
+
+class LossCompensation(models.Model):
+    """RF-LOS-007: trilha auditável — quanto de cada perda foi compensada
+    em cada ano (FIFO; reexecução do fechamento é idempotente)."""
+
+    record = models.ForeignKey(LossRecord, on_delete=models.PROTECT, related_name="compensations")
+    year = models.PositiveIntegerField()
+    amount_brl = models.DecimalField(max_digits=20, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["record", "year"], name="uniq_loss_comp_year")
+        ]

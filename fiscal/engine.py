@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from fiscal.date_rules import TaxDateResolver
+from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
 from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent
@@ -50,6 +51,8 @@ class TaxEngine:
     @classmethod
     def save_snapshot(cls, year: int) -> AnnualAssessment:
         result = cls(year).compute()
+        # RF-LOS-007: consolida a compensação FIFO no ledger (idempotente)
+        LossLedgerService.apply_compensation(year, result["income_brl"])
         rule = result["rule"]
         defaults = {
             "rule_version": rule.rule_version,
@@ -62,8 +65,9 @@ class TaxEngine:
             "loss_carryforward_brl": result["loss_carryforward_brl"],
             "detail": [
                 {
-                    "event_id": d["event"].id, "kind": d["kind"],
-                    "description": str(d["event"]),
+                    "event_id": d["event"].id if d.get("event") else None,
+                    "kind": d["kind"],
+                    "description": d.get("description") or str(d["event"]),
                     "gross_brl": str(d["gross_brl"]),
                     "withholding_brl": str(d["withholding_brl"]),
                     "credit_used": str(d["credit_used"]),
@@ -136,6 +140,11 @@ class TaxEngine:
                 gross_brl = gain_brl if gain_brl > 0 else ZERO
                 if gain_brl < 0:
                     loss += -gain_brl
+                    # RF-LOS-006: registra a perda no ledger rastreável
+                    LossLedgerService.record_loss(
+                        self.year, -gain_brl, source_event=ev,
+                        description=str(ev),
+                    )
                 income += gross_brl
                 detail.append({
                     "event": ev, "kind": "gain/loss", "gross_brl": gross_brl,
@@ -172,16 +181,32 @@ class TaxEngine:
                 })
 
         # Prejuízo herdado de anos anteriores (P&R IRPF: prejuízos são
-        # compensáveis nos anos seguintes). Fonte: AnnualAssessment do ano
-        # anterior (saldo não compensado). Perdas do ano têm prioridade.
-        prev = AnnualAssessment.objects.filter(year=self.year - 1).first()
-        loss_inherited = prev.loss_carryforward_brl if prev else ZERO
+        # compensáveis nos anos seguintes). Fonte preferencial: Loss Ledger
+        # (RF-LOS-006, rastreável por ano/evento); fallback: scalar do
+        # AnnualAssessment anterior (dados legados). FIFO na compensação.
+        registros = LossLedgerService.open_records(self.year - 1)
+        if registros:
+            loss_inherited = sum((r.remaining_brl for r in registros), ZERO)
+        else:
+            prev = AnnualAssessment.objects.filter(year=self.year - 1).first()
+            loss_inherited = prev.loss_carryforward_brl if prev else ZERO
         total_loss_available = loss + loss_inherited
 
         taxable = max(income - total_loss_available, ZERO)
         excess_loss = max(total_loss_available - income, ZERO)
         tax = (taxable * rate).quantize(Decimal("0.01"))
-        if loss_inherited > 0:
+        for registro in registros:
+            if registro.remaining_brl > 0:
+                detail.insert(0, {
+                    "event": None, "kind": "loss_carryforward",
+                    "gross_brl": -registro.remaining_brl,
+                    "description": (
+                        f"R$ {registro.remaining_brl} originados em {registro.origin_year}"
+                        + (f" — {registro.description}" if registro.description else "")
+                    ),
+                    "withholding_brl": ZERO, "credit_used": ZERO,
+                })
+        if loss_inherited > 0 and not registros:
             detail.insert(0, {
                 "event": None, "kind": "loss_carryforward",
                 "gross_brl": -loss_inherited,
