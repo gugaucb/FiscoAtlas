@@ -6,9 +6,9 @@
 **Branch:** `feat/versioned-dirpf-schema`.
 
 **Blocked by:** 10.
-**Status:** ready-for-agent — Fase 3, fora do ciclo atual.
+**Status:** resolved — Fase 3, fora do ciclo atual.
 
-- [ ] DirpfSchema por filing_year
-- [ ] Schema com is_homologated=False → relatório status PRELIMINAR
-- [ ] ReportService busca códigos no schema
-- [ ] Suíte completa verde
+- [x] DirpfSchema por filing_year
+- [x] Schema com is_homologated=False → relatório status PRELIMINAR
+- [x] ReportService busca códigos no schema
+- [x] Suíte completa verde

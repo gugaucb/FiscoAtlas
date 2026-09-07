@@ -122,3 +122,18 @@ class LossCompensation(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["record", "year"], name="uniq_loss_comp_year")
         ]
+
+
+class DirpfSchema(models.Model):
+    """RF-ARQ-002/003: códigos da DIRPF versionados por exercício. Exercício
+    sem schema homologado (IN RFB publicada) gera relatório PRELIMINAR."""
+
+    filing_year = models.PositiveIntegerField(unique=True)
+    schema_version = models.CharField(max_length=64)
+    groups = models.JSONField(default=dict)      # asset_type → código grupo
+    countries = models.JSONField(default=dict)   # ISO → (código RFB, nome)
+    is_homologated = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.schema_version} ({self.filing_year})"

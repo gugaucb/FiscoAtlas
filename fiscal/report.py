@@ -26,9 +26,27 @@ class ReportService:
     def __init__(self, year: int):
         self.year = year
 
+    def _dirpf_schema(self) -> dict:
+        """RF-ARQ-002/003: códigos por exercício com trava de homologação.
+        Sem cadastro → defaults estáticos (homologado por definição)."""
+        from fiscal.models import DirpfSchema
+        schema = DirpfSchema.objects.filter(filing_year=self.year).first()
+        if schema is None:
+            return {
+                "groups": GRUPO_CODIGO, "countries": COUNTRY_RFB,
+                "schema_version": "default", "status": "HOMOLOGADO",
+            }
+        return {
+            "groups": {**GRUPO_CODIGO, **(schema.groups or {})},
+            "countries": {**COUNTRY_RFB, **(schema.countries or {})},
+            "schema_version": schema.schema_version,
+            "status": "HOMOLOGADO" if schema.is_homologated else "PRELIMINAR",
+        }
+
     def build(self) -> dict:
         yearend = date(self.year, 12, 31)
         ptax = PtaxService().get_rate(yearend)
+        dirpf = self._dirpf_schema()
 
         assets = []
         cash = []
@@ -153,6 +171,10 @@ class ReportService:
             "ownership_attribution": ownership_attribution,
             "cbe": CbeService(self.year).evaluate(),
             "high_income": HighIncomeService(self.year).evaluate(),
+            "dirpf": {
+                "schema_version": dirpf["schema_version"],
+                "status": dirpf["status"],
+            },
             "closing": {
                 "is_closed": snapshot is not None,
                 "closed_at": snapshot.computed_at if snapshot else None,
@@ -174,9 +196,9 @@ class ReportService:
                  "ptax_media": a["ptax_media"], "dividends_brl": a["dividends_brl"],
                  "withholding_brl": a["withholding_brl"], "gains_brl": a["gains_brl"],
                  "losses_brl": a["losses_brl"],
-                 "grupo_codigo": GRUPO_CODIGO.get(a["asset"].asset_type, "03/99"),
-                 "country_code_rfb": COUNTRY_RFB.get(a["asset"].country_code, ("", ""))[0],
-                 "country_name": COUNTRY_RFB.get(a["asset"].country_code, ("", a["asset"].country_code))[1],
+                 "grupo_codigo": dirpf["groups"].get(a["asset"].asset_type, "03/99"),
+                 "country_code_rfb": dirpf["countries"].get(a["asset"].country_code, ("", ""))[0],
+                 "country_name": dirpf["countries"].get(a["asset"].country_code, ("", a["asset"].country_code))[1],
                  "cost_usd_text": f"US$ {a['cost_usd_total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                  "discriminacao": (
                      f"{a['quantity']} de {a['asset'].description} ({a['asset'].ticker}), "
