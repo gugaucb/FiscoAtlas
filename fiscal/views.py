@@ -42,11 +42,22 @@ class CloseYearView(FriendlyErrorMixin, generic.View):
 
     def post(self, request, year):
         from django.contrib import messages
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
 
-        result = TaxEngine(year).compute()
-        snapshot = TaxEngine.save_snapshot(year)
-        snapshot.confirmed = True
-        snapshot.save(update_fields=["confirmed"])
+        from fiscal.validator import AnnualClosingValidator
+
+        try:
+            with transaction.atomic():
+                AnnualClosingValidator(year).validate_or_raise()
+                result = TaxEngine(year).compute()
+                snapshot = TaxEngine.save_snapshot(year)
+                snapshot.confirmed = True
+                snapshot.save(update_fields=["confirmed"])
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, str(msg))
+            return redirect("assessment", year=year)
         messages.success(
             request,
             f"Ano {year} fechado. Imposto devido: R$ {result['tax_due_brl']} — "

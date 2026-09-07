@@ -6,13 +6,13 @@
 **Branch:** `feat/annual-closing-validations`.
 
 **Blocked by:** 01, 02, 03, 04.
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Bloqueia residência != BRAZIL_RESIDENT confirmada
-- [ ] Bloqueia qualquer Asset UNKNOWN
-- [ ] Bloqueia evento com amount_brl/fx_rate nulos
-- [ ] Bloqueia venda acima do saldo em custódia na data
-- [ ] Bloqueia ForeignTaxPayment > 15% do rendimento bruto individual
-- [ ] Bloqueia carryforward de imposto retido no exterior
-- [ ] CloseYearView invoca validate_or_raise dentro de transação, com mensagens claras
-- [ ] Suíte completa verde
+- [x] Bloqueia residência != BRAZIL_RESIDENT confirmada
+- [x] Bloqueia qualquer Asset UNKNOWN
+- [x] Bloqueia evento com amount_brl/fx_rate nulos
+- [x] Bloqueia venda acima do saldo em custódia na data
+- [x] Bloqueia ForeignTaxPayment > 15% do rendimento bruto individual
+- [x] Bloqueia carryforward de imposto retido no exterior
+- [x] CloseYearView invoca validate_or_raise dentro de transação, com mensagens claras
+- [x] Suíte completa verde
