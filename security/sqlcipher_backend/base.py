@@ -68,6 +68,9 @@ class DatabaseWrapper(sqlite_base.DatabaseWrapper):
     # do driver para django.db.IntegrityError/OperationalError etc.
     import sqlcipher3.dbapi2 as Database
 
+    # mogrify do DEBUG (last_executed_query) também precisa adaptar Decimal
+    from security.sqlcipher_backend.operations import SqlcipherOperations as ops_class
+
     def get_new_connection(self, conn_params):
         import sqlcipher3
 
