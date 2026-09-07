@@ -17,7 +17,7 @@ class PositionService:
             return {"quantity": Decimal(0), "cost_brl": Decimal(0)}
         return {"quantity": op.quantity, "cost_brl": op.total_cost_brl}
 
-    def position(self, account, asset, until=None) -> dict:
+    def position(self, account, asset, until=None, exclude_event_id=None) -> dict:
         opening = self._opening(asset, until)
         qty = opening["quantity"]
         cost_usd = Decimal(0)
@@ -25,6 +25,10 @@ class PositionService:
         events = FinancialEvent.objects.filter(
             account=account, asset=asset, active=True
         )
+        if exclude_event_id:
+            # custódia ANTERIOR a um evento específico (ex.: a própria venda
+            # no check de venda a descoberto — liquidar 100% é legítimo)
+            events = events.exclude(pk=exclude_event_id)
         if until:
             events = events.filter(trade_date__lte=until)
         events = events.order_by("trade_date", "id")
