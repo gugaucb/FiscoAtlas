@@ -4,7 +4,7 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
 
 ## Estado
 
-- Fase 1 (P0): 4/5 concluídos
+- Fase 1 (P0): 5/5 concluídos
 - Fase 2 (P1): 0/5 — fora do ciclo atual
 - Fase 3 (P2): 0/3 — fora do ciclo atual
 
@@ -43,6 +43,16 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - CASH_IN_LIEU tratado como alienação em TODAS as camadas: posição (baixa de custo + posição suficiente), realized (sale = amount_usd × PTAX) e engine (gain/loss, não rendimento) — bug de rota no engine (caía no ramo DIVIDEND) pego no TDD.
   - Razão do split obrigatória em EventService (ValueError) e EventForm/REQUIRED_BY_TYPE; sem preço/valor. UI: FIELDS JS por tipo.
   - Desvio do roadmap: nenhum material.
+
+### 2026-09-07 — Ticket 05: validações de fechamento anual (resolved)
+- Branch `feat/annual-closing-validations` @ 61e6bdc; suíte: 274 passed.
+- Decisões:
+  - Violações AGREGADAS: o validador coleta todas as violações e levanta ValidationError único — usuário corrige tudo de uma vez (mensagens explicativas com referência ao RF).
+  - Checagem de crédito chama TaxEngine.compute(); wrap em try/except ValidationError porque o engine tem bloqueios próprios (residência, regime) que não devem mascarar o agregado do validador.
+  - Carryforward de crédito proibido: retenção total > crédito efetivamente usado (teto = IR devido) bloqueia — excedente de crédito exterior não compensa em anos seguintes (Lei 14.754/2023, art. 4º).
+  - Short sale: compara quantity do SELL/CASH_IN_LIEU contra PositionService.position(until=trade_date) por par conta×ativo.
+  - CloseYearView: validação + snapshot dentro de transaction.atomic; erro → messages.error por violação + redirect (sem confirmed).
+  - Desvio do roadmap: erro volta com redirect + mensagens (não render 200) — idempotente e testável.
 
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
