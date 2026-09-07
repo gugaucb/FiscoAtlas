@@ -6,11 +6,11 @@
 **Branch:** `feat/cbe-compliance`.
 
 **Blocked by:** 06.
-**Status:** ready-for-agent — Fase 2, fora do ciclo atual.
+**Status:** resolved
 
-- [ ] CT-019: US$999.999 sem flag de completude → CBE_UNDETERMINED
-- [ ] US$999.999 com external_assets_declared_complete=True → CBE_NOT_REQUIRED
-- [ ] CT-020: US$1.000.000 → CBE_REQUIRED
-- [ ] ≥ US$100.000.000 → alerta de obrigação trimestral
-- [ ] Integrado ao ReportService e tela de encerramento
-- [ ] Suíte completa verde
+- [x] CT-019: US$999.999 sem flag de completude → CBE_UNDETERMINED
+- [x] US$999.999 com external_assets_declared_complete=True → CBE_NOT_REQUIRED
+- [x] CT-020: US$1.000.000 → CBE_REQUIRED
+- [x] ≥ US$100.000.000 → alerta de obrigação trimestral
+- [x] Integrado ao ReportService e tela de encerramento
+- [x] Suíte completa verde

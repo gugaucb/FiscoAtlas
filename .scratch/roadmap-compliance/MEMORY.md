@@ -63,6 +63,15 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - event_type max_length 16→32 (necessário para os novos valores).
   - Desvio do roadmap: caixa (amount_usd) transferível além de ativos — mesmo mecanismo de par.
 
+### 2026-09-07 — Ticket 07: CBE / Banco Central (resolved)
+- Branch `feat/cbe-compliance` @ 0e98a73; suíte: 288 passed.
+- Decisões:
+  - Valor patrimonial = posição 31/12 × CUSTO MÉDIO USD (proxy conservador) — a plataforma não registra preço de mercado; decisão documentada no serviço.
+  - Caixa = soma de eventos sem ativo (APORTE − retiradas/juros/taxas), recortada até 31/12 do ano (eventos do ano seguinte não contam — CT-019 testado).
+  - Abaixo de US$1M: CBE_UNDETERMINED (honesto: plataforma não vê bens externos); CBE_NOT_REQUIRED somente com declaração formal no Profile (novo campo, migration 0007 fiscal).
+  - ≥ US$100M marca quarterly=True na mesma seção do relatório.
+  - Desvio do roadmap: nenhum material.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
