@@ -130,6 +130,26 @@ def render_pdf(report: dict) -> bytes:
     total_exempt.setStyle(TableStyle([("FONTNAME", (0, 0), (1, 0), "Helvetica-Bold")]))
     story.append(total_exempt)
     story.append(Spacer(1, 12))
+    darf = report.get("darf")
+    if darf:
+        story.append(Paragraph(f"8 — ORIENTAÇÃO DE PAGAMENTO — DARF {darf['codigo']} ({darf['descricao']})", h2))
+        if darf.get("dispensado"):
+            story.append(_line(body, darf["mensagem"]))
+        else:
+            venc = darf["cota_unica"].get("vencimento")
+            story.append(_line(
+                body,
+                f"Cota única: R$ {_fmt(darf['cota_unica']['valor'])} — vencimento "
+                + (venc.strftime("%d/%m/%Y") if venc else "—"),
+            ))
+            parc = darf.get("parcelamento") or {}
+            if parc:
+                story.append(_line(
+                    body,
+                    f"Parcelamento: até {parc['n_quotas']} quotas de "
+                    f"R$ {_fmt(parc['valor_quota'])} ({parc['juros']})",
+                ))
+        story.append(Spacer(1, 12))
     story.append(Paragraph("Documento de conferência — não substitui a declaração oficial.", styles["Italic"]))
 
     doc.build(story)
