@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.db.models import Sum
 
 from fiscal.cbe import CbeService
+from fiscal.darf import DarfGuideService
 from fiscal.engine import TaxEngine, fx_imposto_exterior
 from fiscal.high_income import HighIncomeService
 from fiscal.models import AnnualAssessment, Profile
@@ -171,6 +172,9 @@ class ReportService:
             "ownership_attribution": ownership_attribution,
             "cbe": CbeService(self.year).evaluate(),
             "high_income": HighIncomeService(self.year).evaluate(),
+            "darf": DarfGuideService(self.year).build(
+                tax_due_brl=TaxEngine(self.year).compute()["tax_due_brl"]
+            ),
             "dirpf": {
                 "schema_version": dirpf["schema_version"],
                 "status": dirpf["status"],

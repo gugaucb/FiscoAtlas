@@ -44,6 +44,21 @@
 </div>
 <p><em class="note">PTAX 31/12: {{ report.ptax_yearend.rate }} ({{ report.ptax_yearend.effective_date }})
   <a href="?ptax=editar">editar</a></em></p>
+{% if report.darf %}
+<div class="card" role="status">
+  <h2>DARF {{ report.darf.codigo }} — {{ report.darf.descricao }}</h2>
+  {% if report.darf.dispensado %}
+  <p>{{ report.darf.mensagem }}</p>
+  {% else %}
+  <p>
+    <strong>Cota única:</strong> R$ {{ report.darf.cota_unica.valor }} —
+    vencimento {{ report.darf.cota_unica.vencimento|date:"d/m/Y" }}.<br>
+    <strong>Parcelamento:</strong> até {{ report.darf.parcelamento.n_quotas }} quotas de
+    R$ {{ report.darf.parcelamento.valor_quota }} ({{ report.darf.parcelamento.juros }}).
+  </p>
+  {% endif %}
+</div>
+{% endif %}
 {% if report.high_income and report.high_income.status != "HIGH_INCOME_NOT_APPLICABLE" %}
 <div class="card" role="status" {% if report.high_income.highlight %}style="border-left:4px solid #b45309"{% endif %}>
   <h2>Altas rendas — tributação mínima (Lei nº 15.270/2025)</h2>
