@@ -113,6 +113,17 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Dividendo importado: per_share derivado do amount líquido (sem imposto no CSV de exemplo); tax_usd 0.
   - Desvio do roadmap: reimport idempotente retorna o batch existente com events_created=0 em vez de duplicar lote.
 
+### 2026-09-07 — Ticket 13: guia DARF 0211 (resolved)
+- Branch `feat/darf-0211-guide` @ b7572ce; suíte: 317 passed.
+- Decisões:
+  - DarfGuideService puro (tax_due_brl injetável) — testável sem PTAX; report injeta o tax_due do engine.
+  - Vencimento: último dia útil de abril do exercício (sab/dom recuada; feriados nacionais não mapeados — nota futura).
+  - Parcelamento: 8 quotas com juros Selic informados textualmente (cálculo real de Selic acumulada fica para o dia do pagamento — fora do escopo do guia).
+  - < R$10 → dispensa legal (art. 872, RIR/2018) com mensagem explicativa.
+  - Desvio do roadmap: nenhum.
+
+## FIM — Roadmap 13/13 concluído (Fase 1 na tag v0.4.0; Fases 2-3 entregues após v0.4.0).
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
