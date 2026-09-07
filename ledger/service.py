@@ -49,6 +49,8 @@ class EventService:
 
         if etype == "JUROS" and not data["account"].is_interest_bearing:
             raise ValueError("JUROS só é válido em conta remunerada; conta não remunerada")
+        if etype == "WITHHOLDING_REFUND" and not data.get("refund_of"):
+            raise ValueError("Restituição exige o evento de origem (refund_of).")
         if etype in ("BUY", "SELL") and (not qty or not price or qty <= 0 or price <= 0):
             raise ValueError("quantity e price_usd devem ser positivos para BUY/SELL")
         if etype in ("STOCK_SPLIT", "REVERSE_SPLIT"):
