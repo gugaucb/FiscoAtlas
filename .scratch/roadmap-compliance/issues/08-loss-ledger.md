@@ -6,9 +6,9 @@
 **Branch:** `feat/loss-ledger-carryforward`.
 
 **Blocked by:** 07.
-**Status:** ready-for-agent — Fase 2, fora do ciclo atual.
+**Status:** resolved — Fase 2, fora do ciclo atual.
 
-- [ ] CT-004/005: 2024 perda R$20.000, rendimentos R$5.000 → compensa 5.000, saldo 15.000; 2025 rendimentos R$10.000 → compensa 10.000, saldo 5.000 para 2026
-- [ ] Relatório anual discrimina "R$ 5.000 originados em 2024"
-- [ ] LossRecord criado por alienação com resultado negativo; FIFO na compensação
-- [ ] Suíte completa verde
+- [x] CT-004/005: 2024 perda R$20.000, rendimentos R$5.000 → compensa 5.000, saldo 15.000; 2025 rendimentos R$10.000 → compensa 10.000, saldo 5.000 para 2026
+- [x] Relatório anual discrimina "R$ 5.000 originados em 2024"
+- [x] LossRecord criado por alienação com resultado negativo; FIFO na compensação
+- [x] Suíte completa verde

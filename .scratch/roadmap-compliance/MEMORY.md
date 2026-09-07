@@ -72,6 +72,16 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - ≥ US$100M marca quarterly=True na mesma seção do relatório.
   - Desvio do roadmap: nenhum material.
 
+### 2026-09-07 — Ticket 08: ledger granular de perdas (resolved)
+- Branch `feat/loss-ledger` @ f664782; suíte: 293 passed.
+- Decisões:
+  - LossRecord idempotente por (origin_year, source_event): refechamento ajusta o saldo pelo DELTA do valor, preservando compensações já feitas.
+  - Compensação FIFO consolidada em save_snapshot (não em compute) — compute é consulta pura/idempotente; efeitos no ledger só no fechamento. Reexecução do ano com rendimento re-aplica do saldo remanescente (trilha regravada).
+  - Engine usa o ledger quando existem registros; fallback para o scalar legado do AnnualAssessment (transição).
+  - Bug de infraestrutura pego no TDD: driver sqlcipher3 não registra adapter Decimal (o stdlib sqlite3 recebe um do Django em conf. de teste) — adaptado no wrapper do cursor (Decimal→str).
+  - save_snapshot agora tolera linhas de detail sem evento (loss_carryforward herdado) — d["event"] None.
+  - Desvio do roadmap: CT-004 numerado com perda 20.000 contra custo 5.000 é aritmeticamente inviável em uma venda; cenário multianual reimplementado com perdas 1.500+500 (mesma lógica FIFO).
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
