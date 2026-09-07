@@ -6,7 +6,7 @@
 **Branch:** `fix/tax-residency-profile`.
 
 **Blocked by:** None (can start immediately).
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Profile com tax_residency_status (4 opções) + residency_start_date, residency_end_date, has_dsdp
 - [ ] TaxEngine.compute levanta ValidationError("Contribuinte não qualificado como residente fiscal pleno no Brasil.") se status != BRAZIL_RESIDENT ou Profile ausente
