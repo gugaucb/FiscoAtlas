@@ -6,6 +6,7 @@ um banco plaintext (primeira instalação), conecta sem chave.
 import re
 import sqlite3
 from collections.abc import Mapping
+from decimal import Decimal
 from itertools import tee
 
 from django.db.backends.sqlite3 import base as sqlite_base
@@ -32,16 +33,26 @@ def _convert_query(query, *, param_names=None):
 
 def make_cursor_wrapper(cursor_cls):
     """Cria um wrapper de cursor com a conversão de placeholders do Django
-    (format/pyformat → qmark/named), herdando a classe Cursor do driver."""
+    (format/pyformat → qmark/named), herdando a classe Cursor do driver.
+    Decimais são adaptados para string (o sqlcipher3 não registra o adapter
+    que o stdlib sqlite3 recebe do Django)."""
+
+    def _adapt(params):
+        if isinstance(params, Mapping):
+            return {k: str(v) if isinstance(v, Decimal) else v for k, v in params.items()}
+        if isinstance(params, (list, tuple)):
+            return type(params)(str(v) if isinstance(v, Decimal) else v for v in params)
+        return params
 
     class Wrapper(cursor_cls):
         def execute(self, query, params=None):
             if params is None:
                 return super().execute(query)
             param_names = list(params) if isinstance(params, Mapping) else None
-            return super().execute(_convert_query(query, param_names=param_names), params)
+            return super().execute(_convert_query(query, param_names=param_names), _adapt(params))
 
         def executemany(self, query, param_list):
+            param_list = [_adapt(p) for p in param_list]
             peekable, param_list = tee(iter(param_list))
             if (params := next(peekable, None)) and isinstance(params, Mapping):
                 param_names = list(params)
