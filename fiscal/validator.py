@@ -81,7 +81,12 @@ class AnnualClosingValidator:
         pares = {(ev.account_id, ev.asset_id) for ev in eventos}
         for account_id, asset_id in pares:
             for ev in eventos.filter(account_id=account_id, asset_id=asset_id):
-                pos = PositionService().position(ev.account, ev.asset, until=ev.trade_date)
+                # custódia ANTERIOR à venda: position(until=trade_date) incluiria
+                # a própria venda e liquidar 100% da posição seria "descoberto"
+                pos = PositionService().position(
+                    ev.account, ev.asset, until=ev.trade_date,
+                    exclude_event_id=ev.id,
+                )
                 if ev.quantity > pos["quantity"]:
                     self.violations.append(
                         f"Venda de {ev.quantity} de {ev.asset.ticker} em "

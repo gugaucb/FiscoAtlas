@@ -136,6 +136,21 @@ def test_bloqueia_venda_acima_da_custodia(ambiente):
         AnnualClosingValidator(2026).validate_or_raise()
 
 
+def test_venda_integral_da_posicao_passa(ambiente):
+    """Liquidar 100% da posição é legítimo: a custódia comparada deve ser
+    a ANTERIOR à venda (position(until=trade_date) inclui a própria venda e
+    zeraria o saldo, acusando venda a descoberto indevidamente)."""
+    conta = ambiente
+    ev = _compra(conta, qty=Decimal(20))
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        EventService().record(dict(
+            event_type="SELL", account=conta, asset=ev.asset,
+            trade_date=date(2026, 6, 1), quantity=Decimal(20),
+            price_usd=Decimal(110), fee_usd=Decimal(0),
+        ))
+    AnnualClosingValidator(2026).validate_or_raise()  # não levanta
+
+
 # ------------------------------------------------- crédito > 15% do bruto
 
 def test_bloqueia_imposto_exterior_acima_de_15_porcento(ambiente):
