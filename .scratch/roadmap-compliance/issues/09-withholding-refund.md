@@ -6,9 +6,9 @@
 **Branch:** `feat/withholding-refund`.
 
 **Blocked by:** 08.
-**Status:** ready-for-agent — Fase 2, fora do ciclo atual.
+**Status:** resolved — Fase 2, fora do ciclo atual.
 
-- [ ] WITHHOLDING_REFUND US$10 do mesmo ano estorna retenção e recalcula crédito
-- [ ] Refund em ano subsequente fechado → alerta de retificação
-- [ ] Tratado no TaxEngine e report.py
-- [ ] Suíte completa verde
+- [x] WITHHOLDING_REFUND US$10 do mesmo ano estorna retenção e recalcula crédito
+- [x] Refund em ano subsequente fechado → alerta de retificação
+- [x] Tratado no TaxEngine e report.py
+- [x] Suíte completa verde

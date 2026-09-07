@@ -82,6 +82,14 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - save_snapshot agora tolera linhas de detail sem evento (loss_carryforward herdado) — d["event"] None.
   - Desvio do roadmap: CT-004 numerado com perda 20.000 contra custo 5.000 é aritmeticamente inviável em uma venda; cenário multianual reimplementado com perdas 1.500+500 (mesma lógica FIFO).
 
+### 2026-09-07 — Ticket 09: withholding refund (resolved)
+- Branch `feat/withholding-refund` @ 38c707e; suíte: 298 passed.
+- Decisões:
+  - Estorno reduz a RETENÇÃO EFETIVA do rendimento de origem (crédito recalculado); rendimento bruto inalterado (o bruto nunca incluiu indevidamente retenção) — refund é devolução de tributo, não rendimento.
+  - FK `refund_of` no FinancialEvent (migração 0011); exige origem no EventService.
+  - Refund retroativo a ano FECHADO: AnnualClosingValidator do ano do estorno bloqueia com pedido de retificação da DAA de origem (CT-008). Refund no mesmo ano não bloqueia.
+  - Desvio do roadmap: nenhum.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.
