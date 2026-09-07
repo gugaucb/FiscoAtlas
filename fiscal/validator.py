@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 from fiscal.engine import TaxEngine
-from fiscal.models import Profile
+from fiscal.models import AnnualAssessment, Profile
 from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
 
@@ -31,6 +31,7 @@ class AnnualClosingValidator:
         self._checar_integridade_cambial()
         self._checar_vendas_acima_da_custodia()
         self._checar_transferencias_solitarias()
+        self._checar_restituicoes_retroativas()
         self._checar_credito_exterior()
         if self.violations:
             raise ValidationError(self.violations)
@@ -110,6 +111,26 @@ class AnnualClosingValidator:
                 f"(transfer_pair_id={p['transfer_pair_id']}) — inconsistência de "
                 "registro (RF-CST-004). Registre a ponta correspondente."
             )
+
+    # ------------------------------------------------------------ RF-FTC-009
+    def _checar_restituicoes_retroativas(self):
+        """CT-008: estorno de retenção em ano posterior ao do rendimento —
+        se o ano de origem já foi fechado, exige retificação da DAA."""
+        refunds = FinancialEvent.objects.filter(
+            active=True, trade_date__year=self.year, event_type="WITHHOLDING_REFUND",
+            refund_of__isnull=False,
+        ).select_related("refund_of")
+        for refund in refunds:
+            origem = refund.refund_of.trade_date.year
+            if origem >= self.year:
+                continue
+            if AnnualAssessment.objects.filter(year=origem).exists():
+                self.violations.append(
+                    f"Restituição de imposto no exterior ({refund}) refere-se a "
+                    f"rendimento de {origem}, cuja apuração já foi fechada — "
+                    "necessária RETIFICAÇÃO da DAA/apuração de "
+                    f"{origem} (RF-FTC-009; CT-008)."
+                )
 
     # ------------------------------------------------------------ RF-VAL-008/009
     def _checar_credito_exterior(self):

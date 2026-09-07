@@ -35,6 +35,8 @@ EVENT_TYPES = [
     # RF-CST-003: transferência entre contas do mesmo titular não é alienação
     ("BROKER_TRANSFER_IN", "Transferência de custódia (entrada)"),
     ("BROKER_TRANSFER_OUT", "Transferência de custódia (saída)"),
+    # RF-FTC-009: estorno de imposto retido no exterior (ex.: 1042-S)
+    ("WITHHOLDING_REFUND", "Restituição de imposto retido no exterior"),
 ]
 
 
@@ -103,6 +105,8 @@ class FinancialEvent(models.Model):
     split_ratio_to = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
     # RF-CST-004: par de pontas de uma transferência de custódia (mesmo UUID)
     transfer_pair_id = models.UUIDField(null=True, blank=True)
+    # RF-FTC-009: evento de rendimento cujo imposto retido foi estornado
+    refund_of = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="refunds")
     corrects = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="corrected_by")
     created_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)

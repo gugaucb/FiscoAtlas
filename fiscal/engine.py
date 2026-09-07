@@ -130,6 +130,27 @@ class TaxEngine:
         credit = ZERO
         ineligible_foreign_tax = ZERO
         pagamentos = _pagamentos_por_evento(events)
+        # RF-FTC-009: estornos de retenção do ano reduzem o crédito do rendimento
+        # de origem (a retenção efetiva é a que sobrevive ao 1042-S)
+        refunds_por_origem = {}
+        refunds = FinancialEvent.objects.filter(
+            active=True, trade_date__year=self.year, event_type="WITHHOLDING_REFUND",
+            refund_of__isnull=False,
+        ).select_related("refund_of")
+        for refund in refunds:
+            refund_brl = refund.amount_usd * (refund.fx_rate or ZERO)
+            refunds_por_origem[refund.refund_of_id] = (
+                refunds_por_origem.get(refund.refund_of_id, ZERO) + refund_brl
+            )
+        for refund in refunds:
+            detail.append({
+                "event": refund, "kind": "withholding_refund",
+                "gross_brl": ZERO, "withholding_brl": ZERO, "credit_used": ZERO,
+                "description": (
+                    f"Estorno de retenção (RF-FTC-009) — {refund.refund_of} "
+                    f"({refund.refund_of.trade_date.year})"
+                ),
+            })
         for ev in events:
             fx = ev.fx_rate or ZERO
             if ev.event_type in ("SELL", "CASH_IN_LIEU"):
@@ -159,6 +180,10 @@ class TaxEngine:
                 # imposto pago no exterior: PTAX COMPRA na data do pagamento
                 fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
                 wh_brl = (ev.tax_usd * fx_tax).quantize(Decimal("0.01"))
+                # RF-FTC-009: deduz estornos do próprio ano (retenção efetiva)
+                refund_brl = refunds_por_origem.get(ev.id, ZERO)
+                if refund_brl > 0:
+                    wh_brl = max(wh_brl - refund_brl, ZERO)
                 # elegibilidade (RF-FTC-002/003): só tributo federal de país
                 # com reciprocidade; evento legado sem pagamento é mantido.
                 if pagamento is not None:
