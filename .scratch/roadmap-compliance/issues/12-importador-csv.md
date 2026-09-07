@@ -6,10 +6,10 @@
 **Branch:** `feat/csv-importer`.
 
 **Blocked by:** 11.
-**Status:** ready-for-agent — Fase 3, fora do ciclo atual.
+**Status:** resolved — Fase 3, fora do ciclo atual.
 
-- [ ] Importa CSV de exemplo Schwab (1 compra + 1 dividendo) com eventos corretos
-- [ ] CT-030: reimport do mesmo arquivo → zero eventos novos
-- [ ] ImportBatch com file_hash
-- [ ] View/upload com pré-visualização
-- [ ] Suíte completa verde
+- [x] Importa CSV de exemplo Schwab (1 compra + 1 dividendo) com eventos corretos
+- [x] CT-030: reimport do mesmo arquivo → zero eventos novos
+- [x] ImportBatch com file_hash
+- [x] View/upload com pré-visualização
+- [x] Suíte completa verde
