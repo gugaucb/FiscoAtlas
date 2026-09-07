@@ -8,10 +8,10 @@
 **Blocked by:** 02 (mesmo arquivo engine; residência antes).
 **Status:** resolved
 
-- [ ] Dividendo US$100 com tax 30 FEDERAL/US gera crédito aproveitável conforme regra vigente
-- [ ] jurisdiction_level STATE ou LOCAL → credit_used = 0 e segregado como imposto não elegível no relatório
-- [ ] País sem reciprocidade/tratado → crédito rejeitado
-- [ ] report.py expõe ineligible_foreign_tax_brl
-- [ ] Suíte completa verde
+- [x] Dividendo US$100 com tax 30 FEDERAL/US gera crédito aproveitável conforme regra vigente
+- [x] jurisdiction_level STATE ou LOCAL → credit_used = 0 e segregado como imposto não elegível no relatório
+- [x] País sem reciprocidade/tratado → crédito rejeitado
+- [x] report.py expõe ineligible_foreign_tax_brl
+- [x] Suíte completa verde
 
 Notas: usa a entidade ForeignTaxPayment (ticket ptax-foreign-tax já entregou estrutura; aqui entra só o julgamento de elegibilidade — conversões VENDA/COMPRA já corretas).

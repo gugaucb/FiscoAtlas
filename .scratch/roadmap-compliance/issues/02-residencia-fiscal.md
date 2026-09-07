@@ -8,9 +8,9 @@
 **Blocked by:** None (can start immediately).
 **Status:** resolved
 
-- [ ] Profile com tax_residency_status (4 opções) + residency_start_date, residency_end_date, has_dsdp
-- [ ] TaxEngine.compute levanta ValidationError("Contribuinte não qualificado como residente fiscal pleno no Brasil.") se status != BRAZIL_RESIDENT ou Profile ausente
-- [ ] BrokerAccount com ownership_type (INDIVIDUAL/JOINT/THIRD_PARTY) e ownership_share (0.01–100.00)
-- [ ] Conta conjunta 50%: relatório demonstra saldos/rendimentos proporcionais
-- [ ] Form/views de perfil atualizados
-- [ ] Suíte completa verde
+- [x] Profile com tax_residency_status (4 opções) + residency_start_date, residency_end_date, has_dsdp
+- [x] TaxEngine.compute levanta ValidationError("Contribuinte não qualificado como residente fiscal pleno no Brasil.") se status != BRAZIL_RESIDENT ou Profile ausente
+- [x] BrokerAccount com ownership_type (INDIVIDUAL/JOINT/THIRD_PARTY) e ownership_share (0.01–100.00)
+- [x] Conta conjunta 50%: relatório demonstra saldos/rendimentos proporcionais
+- [x] Form/views de perfil atualizados
+- [x] Suíte completa verde

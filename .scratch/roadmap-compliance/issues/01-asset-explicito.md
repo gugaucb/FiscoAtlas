@@ -8,9 +8,9 @@
 **Blocked by:** None (can start immediately).
 **Status:** resolved
 
-- [ ] EventForm rejeita com ValidationError ticker não cadastrado (fim do get_or_create implícito)
-- [ ] Asset suporta FOREIGN_EQUITY, FOREIGN_ETF, REIT, US_TREASURY, FOREIGN_BOND, FOREIGN_FUND, CONTROLLED_ENTITY, TRUST, UNKNOWN
-- [ ] Asset tem is_controlled_entity (bool) e ownership_share_pct (decimal, default 0)
-- [ ] TaxEngine.compute lança ValidationError explicativo para legal_asset_type in (CONTROLLED_ENTITY, TRUST, UNKNOWN) ou is_controlled_entity=True
-- [ ] AssetForm + view/template de cadastro explícito (descrição, natureza jurídica, não-controle)
-- [ ] Suíte completa verde
+- [x] EventForm rejeita com ValidationError ticker não cadastrado (fim do get_or_create implícito)
+- [x] Asset suporta FOREIGN_EQUITY, FOREIGN_ETF, REIT, US_TREASURY, FOREIGN_BOND, FOREIGN_FUND, CONTROLLED_ENTITY, TRUST, UNKNOWN
+- [x] Asset tem is_controlled_entity (bool) e ownership_share_pct (decimal, default 0)
+- [x] TaxEngine.compute lança ValidationError explicativo para legal_asset_type in (CONTROLLED_ENTITY, TRUST, UNKNOWN) ou is_controlled_entity=True
+- [x] AssetForm + view/template de cadastro explícito (descrição, natureza jurídica, não-controle)
+- [x] Suíte completa verde
