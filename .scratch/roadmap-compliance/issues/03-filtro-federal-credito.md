@@ -6,7 +6,7 @@
 **Branch:** `fix/foreign-tax-federal-filter`.
 
 **Blocked by:** 02 (mesmo arquivo engine; residência antes).
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Dividendo US$100 com tax 30 FEDERAL/US gera crédito aproveitável conforme regra vigente
 - [ ] jurisdiction_level STATE ou LOCAL → credit_used = 0 e segregado como imposto não elegível no relatório
