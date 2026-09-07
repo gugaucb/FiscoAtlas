@@ -32,6 +32,9 @@ EVENT_TYPES = [
     ("STOCK_SPLIT", "Desdobramento (split)"),
     ("REVERSE_SPLIT", "Grupamento (reverse split)"),
     ("CASH_IN_LIEU", "Fração paga em dinheiro (cash-in-lieu)"),
+    # RF-CST-003: transferência entre contas do mesmo titular não é alienação
+    ("BROKER_TRANSFER_IN", "Transferência de custódia (entrada)"),
+    ("BROKER_TRANSFER_OUT", "Transferência de custódia (saída)"),
 ]
 
 
@@ -79,7 +82,7 @@ class BrokerAccount(models.Model):
 
 
 class FinancialEvent(models.Model):
-    event_type = models.CharField(max_length=16, choices=EVENT_TYPES)
+    event_type = models.CharField(max_length=32, choices=EVENT_TYPES)
     account = models.ForeignKey(BrokerAccount, on_delete=models.PROTECT, related_name="events")
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT, null=True, blank=True, related_name="events")
     trade_date = models.DateField()
@@ -98,6 +101,8 @@ class FinancialEvent(models.Model):
     # ex.: 1→2 desdobramento, 10→1 grupamento)
     split_ratio_from = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
     split_ratio_to = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
+    # RF-CST-004: par de pontas de uma transferência de custódia (mesmo UUID)
+    transfer_pair_id = models.UUIDField(null=True, blank=True)
     corrects = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="corrected_by")
     created_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)

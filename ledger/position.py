@@ -38,6 +38,19 @@ class PositionService:
                 razao = ev.split_ratio_to / ev.split_ratio_from
                 qty = qty * razao
                 # custos totais (USD e BRL) preservados; unitário se ajusta
+            elif ev.event_type == "BROKER_TRANSFER_IN":
+                # RF-CST-003: entrada transporta custo integral (não é compra)
+                cost_usd += ev.amount_usd
+                cost_brl += abs(ev.amount_brl or 0)
+                qty += ev.quantity
+            elif ev.event_type == "BROKER_TRANSFER_OUT":
+                # saída proporcional (não é alienação)
+                avg = cost_usd / qty if qty else Decimal(0)
+                avg_brl = cost_brl / qty if qty else Decimal(0)
+                sold_qty = ev.quantity
+                cost_usd -= avg * sold_qty
+                cost_brl -= avg_brl * sold_qty
+                qty -= sold_qty
             elif ev.event_type in ("SELL", "CASH_IN_LIEU"):
                 avg = cost_usd / qty if qty else Decimal(0)
                 avg_brl = cost_brl / qty if qty else Decimal(0)
@@ -61,7 +74,8 @@ class PositionService:
         out = []
         events = FinancialEvent.objects.filter(
             account=account, asset=asset, active=True,
-            event_type__in=("BUY", "SELL", "STOCK_SPLIT", "REVERSE_SPLIT", "CASH_IN_LIEU"),
+            event_type__in=("BUY", "SELL", "STOCK_SPLIT", "REVERSE_SPLIT", "CASH_IN_LIEU",
+                            "BROKER_TRANSFER_IN", "BROKER_TRANSFER_OUT"),
         )
         if until:
             events = events.filter(trade_date__lte=until)
@@ -75,6 +89,17 @@ class PositionService:
                 razao = ev.split_ratio_to / ev.split_ratio_from
                 qty = qty * razao
                 # custos totais (USD e BRL) preservados; unitário se ajusta
+            elif ev.event_type == "BROKER_TRANSFER_IN":
+                cost_usd += ev.amount_usd
+                cost_brl += abs(ev.amount_brl or 0)
+                qty += ev.quantity
+            elif ev.event_type == "BROKER_TRANSFER_OUT":
+                # sai do custo médio proporcional; sem apuração (RF-CST-003)
+                avg_usd = cost_usd / qty if qty else Decimal(0)
+                avg_brl = cost_brl / qty if qty else Decimal(0)
+                cost_usd -= avg_usd * ev.quantity
+                cost_brl -= avg_brl * ev.quantity
+                qty -= ev.quantity
             else:
                 avg_usd = cost_usd / qty if qty else Decimal(0)
                 avg_brl = cost_brl / qty if qty else Decimal(0)
