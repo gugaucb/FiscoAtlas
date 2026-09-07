@@ -11,6 +11,7 @@ urlpatterns = [
     path("eventos/novo/", views.EventCreateView.as_view(), name="event-create"),
     path("eventos/<int:pk>/corrigir/", views.EventCorrectView.as_view(), name="event-correct"),
     path("eventos/<int:pk>/desativar/", views.EventDeactivateView.as_view(), name="event-deactivate"),
+    path("imposto-exterior/<int:pk>/editar/", views.ForeignTaxPaymentEditView.as_view(), name="foreign-tax-edit"),
     path("posicoes/", views.PositionsView.as_view(), name="positions"),
     path("caixa/", views.CashView.as_view(), name="cash"),
     path("posicao-abertura/", OpeningPositionCreateView.as_view(), name="opening-position"),

@@ -117,6 +117,20 @@ class ForeignTaxPayment(models.Model):
         return f"{self.tax_type} {self.country_code} {self.foreign_tax_payment_date} {self.tax_usd}"
 
 
+class ForeignTaxPaymentAudit(models.Model):
+    """Trilha de auditoria da edição do imposto pago no exterior.
+
+    Um registro por edição: diff campo a campo (old/new), motivo obrigatório
+    e instante da alteração."""
+    payment = models.ForeignKey(ForeignTaxPayment, on_delete=models.PROTECT, related_name="audits")
+    changes = models.JSONField()  # [{"field": ..., "old": ..., "new": ...}]
+    reason = models.CharField(max_length=255)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.changed_at:%d/%m/%Y %H:%M} {self.reason}"
+
+
 class OpeningPosition(models.Model):
     """Posição fiscal de abertura (situação patrimonial em 31/12/2025), com
     custo acumulado em reais já declarado na DIRPF anterior. O motor fiscal

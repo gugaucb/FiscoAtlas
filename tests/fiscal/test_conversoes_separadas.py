@@ -102,3 +102,7 @@ def test_report_usa_compra_para_withholding(dividendo_12_03):
     assert asset_row["withholding_brl"] == Decimal("144.00")
     credit = report["income"]["credit_detail"][0]
     assert credit["withholding_brl"] == Decimal("144.00")
+    # rastreabilidade no relatório: as duas cotações discriminadas
+    assert credit["fx_income"] == Decimal("5.00")
+    assert credit["fx_tax"] == Decimal("4.80")
+    assert credit["tax_payment_date"] == date(2026, 3, 12)

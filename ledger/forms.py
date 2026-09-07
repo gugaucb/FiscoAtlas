@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import django.forms as forms
 from ledger.models import DATE_EVIDENCE_SOURCES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
+from ledger.foreign_tax_forms import ForeignTaxPaymentForm  # noqa: F401 (API única de formulários)
 
 LABELS = {
     "event_type": "Tipo de evento",

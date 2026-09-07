@@ -109,6 +109,9 @@ class ReportService:
                 "withholding_brl": d["withholding_brl"],
                 "credit_used_brl": d["credit_used"],
                 "credit_unused_brl": (d["withholding_brl"] - d["credit_used"]).quantize(Decimal("0.01")),
+                "fx_income": d["fx_income"],
+                "fx_tax": d["fx_tax"],
+                "tax_payment_date": d["tax_payment_date"],
             }
             for d in income["detail"] if d["withholding_brl"] > 0
         ]

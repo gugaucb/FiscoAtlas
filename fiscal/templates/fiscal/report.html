@@ -149,20 +149,23 @@
   <p class="page-sub">Lei 14.754/2023, art. 5º — crédito limitado a 15% por rendimento; excedente é descartado.</p>
   <table>
     <thead>
-    <tr><th>Rendimento</th><th>Bruto BRL</th><th>Limite 15%</th><th>IR pago no exterior</th><th>Crédito usado</th><th>Não aproveitado</th></tr>
+    <tr><th>Rendimento</th><th>Bruto BRL</th><th>PTAX rendimento (VENDA)</th><th>Limite 15%</th><th>IR pago no exterior</th><th>PTAX imposto (COMPRA)</th><th>Data do pagamento</th><th>Crédito usado</th><th>Não aproveitado</th></tr>
     </thead>
     <tbody>
     {% for r in report.income.credit_detail %}
     <tr>
       <td>{{ r.description }}</td>
       <td class="money">{{ r.gross_brl }}</td>
+      <td class="num">{{ r.fx_income }}</td>
       <td class="money">{{ r.limit_brl }}</td>
       <td class="money">{{ r.withholding_brl }}</td>
+      <td class="num">{{ r.fx_tax }}</td>
+      <td class="num">{{ r.tax_payment_date|date:"d/m/Y" }}</td>
       <td class="money">{{ r.credit_used_brl }}</td>
       <td class="money">{{ r.credit_unused_brl }}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="6" class="empty">Sem rendimentos com retenção no exterior.</td></tr>
+    <tr><td colspan="9" class="empty">Sem rendimentos com retenção no exterior.</td></tr>
     {% endfor %}
     </tbody>
   </table>

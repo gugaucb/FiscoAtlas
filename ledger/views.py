@@ -4,8 +4,8 @@ from django.urls import reverse_lazy
 from django.views import generic
 
 from ledger.cash import CashLedgerService
-from ledger.forms import EventForm
-from ledger.models import Asset, FinancialEvent
+from ledger.forms import EventForm, ForeignTaxPaymentForm
+from ledger.models import Asset, FinancialEvent, ForeignTaxPayment
 from ledger.position import PositionService
 from ledger.service import EventService
 
@@ -14,7 +14,7 @@ class EventListView(generic.ListView):
     model = FinancialEvent
     template_name = "ledger/event_list.html"
     context_object_name = "events"
-    queryset = FinancialEvent.objects.filter(active=True).order_by("-trade_date", "-id")
+    queryset = FinancialEvent.objects.filter(active=True).prefetch_related("foreign_tax_payments").order_by("-trade_date", "-id")
 
 
 class EventCreateView(generic.CreateView):
@@ -70,6 +70,24 @@ class EventCorrectView(generic.UpdateView):
             form.add_error(None, str(e))
             return self.form_invalid(form)
         messages.success(self.request, "Correção registrada; evento original desativado.")
+        return redirect(self.success_url)
+
+
+class ForeignTaxPaymentEditView(generic.UpdateView):
+    """Correção documental do imposto pago no exterior, com trilha de auditoria."""
+    form_class = ForeignTaxPaymentForm
+    template_name = "ledger/foreign_tax_edit.html"
+    success_url = reverse_lazy("event-list")
+    queryset = ForeignTaxPayment.objects.all()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["audits"] = self.object.audits.order_by("-changed_at")
+        return ctx
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, "Imposto no exterior atualizado; alteração registrada na trilha de auditoria.")
         return redirect(self.success_url)
 
 

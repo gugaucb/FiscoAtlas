@@ -18,7 +18,7 @@
     <td class="num">{{ ev.fx_rate|default:"—" }}</td>
     <td class="money">{{ ev.amount_brl|default:"—" }}</td>
     <td class="money">{{ ev.tax_usd|default:"—" }}</td>
-    <td><a href="{% url 'event-correct' ev.pk %}">corrigir</a>
+    <td>{% if ev.tax_usd and ev.foreign_tax_payments.first %}<a href="{% url 'foreign-tax-edit' ev.foreign_tax_payments.first.pk %}">imposto</a> · {% endif %}<a href="{% url 'event-correct' ev.pk %}">corrigir</a>
         <form method="post" action="{% url 'event-deactivate' ev.pk %}" style="display:inline"
               onsubmit="return confirm('Desativar este evento? Ele deixará de ser contabilizado.')">
           {% csrf_token %}

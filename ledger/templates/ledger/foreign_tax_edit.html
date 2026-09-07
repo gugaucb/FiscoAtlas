@@ -1,0 +1,45 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Imposto pago no exterior</h1>
+<p class="page-sub">Correção documental da retenção — toda alteração exige motivo e fica registrada na trilha de auditoria.</p>
+<div class="card">
+  {% if form.non_field_errors %}<p class="errors">{{ form.non_field_errors }}</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+      {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn" id="save-payment">Salvar</button>
+    <a href="{% url 'event-list' %}" class="btn">Cancelar</a>
+  </form>
+</div>
+
+{% if audits %}
+<h2>Trilha de auditoria</h2>
+<div class="card">
+  <table>
+    <thead>
+    <tr><th>Quando</th><th>Motivo</th><th>Alterações</th></tr>
+    </thead>
+    <tbody>
+    {% for a in audits %}
+    <tr>
+      <td>{{ a.changed_at|date:"d/m/Y H:i" }}</td>
+      <td>{{ a.reason }}</td>
+      <td>
+        {% for c in a.changes %}
+        <em>{{ c.field }}</em>: {{ c.old }} → {{ c.new }}{% if not forloop.last %}; {% endif %}
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

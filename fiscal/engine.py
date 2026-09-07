@@ -114,6 +114,8 @@ class TaxEngine:
                 detail.append({
                     "event": ev, "kind": ev.event_type.lower(), "gross_brl": gross_brl,
                     "withholding_brl": wh_brl, "credit_used": used,
+                    "fx_income": fx, "fx_tax": fx_tax,
+                    "tax_payment_date": pagamento.foreign_tax_payment_date if pagamento else ev.trade_date,
                 })
 
         # Prejuízo herdado de anos anteriores (P&R IRPF: prejuízos são
