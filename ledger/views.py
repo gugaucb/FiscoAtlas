@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import generic
 
@@ -133,3 +133,54 @@ class CashView(generic.TemplateView):
                 "history": CashLedgerService().history(acct),
             })
         return ctx
+
+
+class StatementImportView(generic.View):
+    """RF-IMP-001..004: upload de extrato CSV com preview (GET ?csv=…)
+    e importação idempotente por hash (CT-030)."""
+
+    template_name = "ledger/import_form.html"
+
+    def get(self, request, account_id):
+        from ledger.models import BrokerAccount
+
+        conta = BrokerAccount.objects.get(pk=account_id)
+        ctx = {"account": conta, "preview": None, "csv_text": ""}
+        csv_text = request.GET.get("csv", "")
+        if csv_text:
+            from ledger.importers.schwab import SchwabStatementImporter
+
+            importer = SchwabStatementImporter(conta)
+            ctx["preview"] = importer.preview(csv_text)
+            ctx["csv_text"] = csv_text
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, account_id):
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
+        from django.shortcuts import get_object_or_404
+
+        from ledger.importers.base import StatementImportError
+        from ledger.importers.schwab import SchwabStatementImporter
+        from ledger.models import BrokerAccount
+
+        conta = get_object_or_404(BrokerAccount, pk=account_id)
+        arquivo = request.FILES.get("arquivo")
+        if arquivo is None:
+            messages.error(request, "Selecione o arquivo CSV do extrato.")
+            return redirect("import-statement", account_id=account_id)
+        text = arquivo.read().decode("utf-8-sig", errors="replace")
+        try:
+            with transaction.atomic():
+                batch = SchwabStatementImporter(conta).import_csv(text)
+        except (StatementImportError, ValidationError, ValueError) as e:
+            transaction.set_rollback(True)
+            messages.error(request, f"Falha na importação: {e}")
+            return redirect("import-statement", account_id=account_id)
+        if batch.events_created == 0:
+            messages.info(request, "Arquivo já importado anteriormente — nenhum evento criado.")
+        else:
+            messages.success(
+                request, f"Extrato importado: {batch.events_created} evento(s) criado(s)."
+            )
+        return redirect("import-statement", account_id=account_id)

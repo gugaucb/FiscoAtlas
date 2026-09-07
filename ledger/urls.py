@@ -16,4 +16,5 @@ urlpatterns = [
     path("posicoes/", views.PositionsView.as_view(), name="positions"),
     path("caixa/", views.CashView.as_view(), name="cash"),
     path("posicao-abertura/", OpeningPositionCreateView.as_view(), name="opening-position"),
+    path("contas/<int:account_id>/importar/", views.StatementImportView.as_view(), name="import-statement"),
 ]

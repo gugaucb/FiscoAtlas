@@ -105,6 +105,14 @@ Log de progresso e decisões. Uma entrada por ticket (data, branch, testes, deci
   - Trava de homologação: sem cadastro → default/HOMOLOGADO; com cadastro não homologado → PRELIMINAR exposto no relatório.
   - Desvio do roadmap: nenhum.
 
+### 2026-09-07 — Ticket 12: importador CSV (resolved)
+- Branch `feat/csv-importer` @ 269cdff; suíte: 312 passed.
+- Decisões:
+  - Dedup principal pelo hash SHA-256 do conteúdo do arquivo (CT-030); import atômico (transaction.atomic) — falha de linha revoga tudo.
+  - Ações não suportadas (Sell/Transfer) são IGNORADAS na preview, não erro — mantém o importer minimalista; linhas de ativo não cadastrado falham com mensagem clara (RF-AST-003 se mantém).
+  - Dividendo importado: per_share derivado do amount líquido (sem imposto no CSV de exemplo); tax_usd 0.
+  - Desvio do roadmap: reimport idempotente retorna o batch existente com events_created=0 em vez de duplicar lote.
+
 ### 2026-09-07 — Setup (ticket 00)
 - Publicados 13 tickets em `issues/`, spec.md e este MEMORY.md.
 - Decisões: escopo do ciclo = Fase 1; 1 ticket por Parte; juiz = suíte completa verde + critérios.

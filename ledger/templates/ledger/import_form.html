@@ -1,0 +1,36 @@
+{% extends "ledger/base.html" %}
+
+{% block content %}
+<h1>Importar extrato — {{ account }}</h1>
+
+<form method="get" class="card">
+  <h2>Pré-visualizar</h2>
+  <textarea name="csv" rows="6" style="width:100%"
+    placeholder="Cole aqui o conteúdo do CSV do extrato">{{ csv_text }}</textarea>
+  <button type="submit" class="btn secondary">Pré-visualizar</button>
+</form>
+
+{% if preview %}
+<div class="card">
+  <h2>Pré-visualização ({{ preview|length }} linha(s) suportada(s))</h2>
+  <table>
+    <thead><tr><th>Linha</th><th>Tipo</th><th>Ticker</th><th>Data</th><th>Qtd</th><th>Preço</th><th>Valor</th></tr></thead>
+    <tbody>
+      {% for r in preview %}
+      <tr><td>{{ r.line }}</td><td>{{ r.event_type }}</td><td>{{ r.ticker }}</td>
+          <td>{{ r.trade_date }}</td><td>{{ r.quantity }}</td><td>{{ r.price }}</td><td>{{ r.amount }}</td></tr>
+      {% empty %}
+      <tr><td colspan="7">Nenhuma linha reconhecida (ações suportadas: Buy, Dividend).</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+  <h2>Enviar arquivo</h2>
+  <input type="file" name="arquivo" accept=".csv,text/csv">
+  <button type="submit" class="btn">Importar</button>
+</form>
+{% endblock %}
