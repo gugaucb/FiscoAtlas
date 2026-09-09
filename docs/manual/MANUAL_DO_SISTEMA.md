@@ -1,7 +1,7 @@
 # Manual do Sistema — FiscoAtlas
 
-> **Versão:** 1.1 (atualizada para o sistema v0.5.0)  
-> **Data:** 07/09/2026  
+> **Versão:** 1.2 (atualizada para o sistema v0.5.0)  
+> **Data:** 08/09/2026  
 > **Sistema:** FiscoAtlas — Imposto sobre Investimentos no Exterior (EUA)  
 > **Base legal:** Lei nº 14.754/2023, IN RFB 2.180/2024, Lei nº 15.270/2025
 
@@ -10,26 +10,29 @@
 ## Sumário
 
 1. [Visão Geral](#1-visão-geral)
-2. [Requisitos e Instalação](#2-requisitos-e-instalação)
-3. [Primeiro Acesso — Configuração de Segurança](#3-primeiro-acesso--configuração-de-segurança)
-4. [Tela de Bloqueio e Desbloqueio](#4-tela-de-bloqueio-e-desbloqueio)
-5. [Dashboard — Lista de Eventos](#5-dashboard--lista-de-eventos)
-6. [Perfil do Contribuinte](#6-perfil-do-contribuinte)
-7. [Contas (Caixas)](#7-contas-caixas)
-8. [Cadastro de Ativos](#8-cadastro-de-ativos)
-9. [Lançamento de Eventos Financeiros](#9-lançamento-de-eventos-financeiros)
-10. [Posições](#10-posições)
-11. [Caixa](#11-caixa)
-12. [Posição de Abertura](#12-posição-de-abertura)
-13. [Apuração Anual](#13-apuração-anual)
-14. [Relatório DIRPF](#14-relatório-dirpf)
-15. [PTAX de Fechamento](#15-ptax-de-fechamento)
-16. [Segurança](#16-segurança)
-17. [Documentos](#17-documentos)
-18. [Fluxo Completo — Passo a Passo](#18-fluxo-completo--passo-a-passo)
-19. [Regras de Negócio](#19-regras-de-negócio)
-20. [Glossário](#20-glossário)
-21. [Referências Legais](#21-referências-legais)
+2. [Entenda a Regra — Como o Imposto Funciona](#2-entenda-a-regra--como-o-imposto-funciona)
+3. [Requisitos e Instalação](#3-requisitos-e-instalação)
+4. [Primeiro Acesso — Configuração de Segurança](#4-primeiro-acesso--configuração-de-segurança)
+5. [Tela de Bloqueio e Desbloqueio](#5-tela-de-bloqueio-e-desbloqueio)
+6. [Dashboard — Lista de Eventos](#6-dashboard--lista-de-eventos)
+7. [Perfil do Contribuinte](#7-perfil-do-contribuinte)
+8. [Contas (Caixas)](#8-contas-caixas)
+9. [Cadastro de Ativos](#9-cadastro-de-ativos)
+10. [Lançamento de Eventos Financeiros](#10-lançamento-de-eventos-financeiros)
+11. [Posições](#11-posições)
+12. [Caixa](#12-caixa)
+13. [Posição de Abertura](#13-posição-de-abertura)
+14. [Apuração Anual](#14-apuração-anual)
+15. [Relatório DIRPF](#15-relatório-dirpf)
+16. [PTAX de Fechamento](#16-ptax-de-fechamento)
+17. [Segurança](#17-segurança)
+18. [Documentos](#18-documentos)
+19. [Fluxo Completo — Passo a Passo](#19-fluxo-completo--passo-a-passo)
+20. [Regras de Negócio](#20-regras-de-negócio)
+21. [Ciclo de Vida Multi-Anos e Backup](#21-ciclo-de-vida-multi-anos-e-backup)
+22. [Troubleshooting — Se Algo Der Errado](#22-troubleshooting--se-algo-der-errado)
+23. [Glossário](#23-glossário)
+24. [Referências Legais](#24-referências-legais)
 
 ---
 
@@ -77,7 +80,78 @@ O **FiscoAtlas** é um sistema web local (*local-first*) para apuração de impo
 
 ---
 
-## 2. Requisitos e Instalação
+## 2. Entenda a Regra — Como o Imposto Funciona
+
+> Se você já conhece a Lei nº 14.754/2023, pode pular para a [Instalação](#3-requisitos-e-instalação). Caso contrário, este capítulo explica em 10 minutos o que o sistema calcula — e por quê.
+
+### 2.1 O princípio básico
+
+Antes da Lei 14.754/2023, investir no exterior tinha tributação indefinida. A lei fixou uma regra simples:
+
+> **Rendimentos e ganhos de capital obtidos no exterior são tributados a 15% de imposto de renda, convertidos para reais pela cotação PTAX.**
+
+Em uma frase: *tudo o que você ganhou (venda com lucro, dividendo, juros) vira reais na cotação do dia, e 15% disso é o imposto.*
+
+### 2.2 Quando o imposto "nasce" (fato gerador)
+
+O imposto não é devido por simplesmente *ter* o investimento — é devido quando um **fato gerador** acontece:
+
+| Você... | Fato gerador | Imposto devido? |
+|---------|-------------|:---------------:|
+| Comprou ações e elas valorizaram | Nenhum — só guarda | ❌ Não |
+| Vendeu as ações com lucro | Data da venda | ✅ Sim, sobre o lucro |
+| Recebeu um dividendo | Data do recebimento | ✅ Sim, sobre o dividendo |
+| Comprou e vendeu pelo mesmo preço | Data da venda | ❌ Não (não há ganho) |
+
+**Exemplo prático:** você comprou 10 ações a US$ 100 e elas estão hoje valendo US$ 150. Você não deve nada — a valorização "no papel" não é tributada. Se amanhã vender as 10 ações a US$ 150, o fato gerador acontece: o lucro de US$ 500 vira reais pela PTAX da *data da venda* e sofre 15%.
+
+### 2.3 Exemplo numérico completo — do dividendo ao DARF
+
+Vamos acompanhar um dividendo do início ao fim:
+
+1. **Recebimento:** em 05/03/2026 você recebe US$ 1.000,00 de dividendos da sua corretora americana.
+2. **Imposto retido na fonte:** a corretora reteve US$ 100,00 (10%) e você recebeu US$ 900,00 líquidos. *O lançamento registra o valor bruto (US$ 1.000) e a retenção (US$ 100).*
+3. **Conversão para reais:** o sistema busca a cotação **PTAX Venda** do BCB em 05/03/2026. Suponha R$ 5,50 → o dividendo vale **R$ 5.500,00**.
+4. **Cálculo do imposto:** 15% × R$ 5.500,00 = **R$ 825,00** — este é o imposto devido sobre o dividendo.
+5. **Acumulação anual:** todos os rendimentos e ganhos do ano-calendário somam-se numa base única, e o sistema aplica os 15% sobre o total (compensando perdas — ver [Apuração Anual](#14-apuração-anual)).
+6. **DARF:** o imposto é pago via DARF código 0211, vencendo no último dia útil de abril do ano seguinte. Valores de DARF abaixo de R$ 10,00 são dispensados.
+
+### 2.4 O crédito de imposto exterior
+
+Você não paga o imposto duas vezes. Como a corretora americana já reteve US$ 100 (≈ R$ 550), esse valor vira **crédito** contra o imposto brasileiro:
+
+- **Elegível:** apenas impostos **federais** (nos EUA, o retido na fonte sobre dividendos) de países **com reciprocidade** — atualmente, somente os **Estados Unidos**.
+- **Limitado ao imposto devido:** o crédito compensa no máximo o IR brasileiro. Se a retenção exterior superar os 15%, o excedente é perdido — **não há restituição nem carry-forward do crédito** (Lei 14.754/2023, art. 4º).
+
+**Caso prático:** dividendo bruto de R$ 5.500, IR devido de R$ 825, retenção federal convertida (PTAX *compra* da data do pagamento) de R$ 550.
+→ Crédito aproveitado: R$ 550. IR a pagar via DARF: R$ 825 − R$ 550 = **R$ 275**.
+
+> ⚠️ Se a retenção fosse de 30% (R$ 1.650), só R$ 825 seriam aproveitados — os outros R$ 825 são perdidos. Retenções acima de 15% do rendimento bruto também **bloqueiam o fechamento do ano** (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado)).
+
+### 2.5 Perdas: compensação carry-forward
+
+Vendeu um ativo por menos do que pagou? A perda é registrada e compensada com ganhos **do mesmo ano**; o que sobra vai para os anos seguintes (FIFO, sem prazo de expiração):
+
+- Ano 1: ganho de R$ 1.000, perda de R$ 2.000 → imposto zero; sobram R$ 1.000 de prejuízo para o ano seguinte.
+- Ano 2: ganho de R$ 3.000 → base tributável = R$ 3.000 − R$ 1.000 = R$ 2.000 → IR de R$ 300.
+
+### 2.6 E a CBE?
+
+Além do imposto, quem tem capitais no exterior pode ter obrigação **informativa** junto ao Banco Central:
+
+| Valor total em 31/12 | Obrigação |
+|----------------------|-----------|
+| ≥ US$ 1.000.000 | CBE **anual** |
+| ≥ US$ 100.000.000 | CBE **trimestral** |
+| Abaixo | Dispensado |
+
+O sistema avalia sua posição em 31/12 e indica no Relatório DIRPF se a CBE é obrigatória (ver [Relatório DIRPF](#15-relatório-dirpf)).
+
+> **Aviso**: este capítulo é uma simplificação didática. Valide sempre com um contador antes de entregar a declaração.
+
+---
+
+## 3. Requisitos e Instalação
 
 ### Pré-requisitos
 
@@ -110,7 +184,7 @@ O sistema executa automaticamente:
 
 ---
 
-## 3. Primeiro Acesso — Configuração de Segurança
+## 4. Primeiro Acesso — Configuração de Segurança
 
 No primeiro acesso, o sistema exibe a tela de **configuração inicial de segurança**.
 
@@ -141,7 +215,7 @@ Após a configuração, o sistema gera e exibe uma **recovery key** única:
 
 ---
 
-## 4. Tela de Bloqueio e Desbloqueio
+## 5. Tela de Bloqueio e Desbloqueio
 
 O sistema bloqueia automaticamente após 10 minutos de inatividade, ou manualmente via botão **Bloquear** na barra de navegação.
 
@@ -162,7 +236,7 @@ O vault é desbloqueado e a VaultKey é carregada em memória, permitindo acesso
 
 ---
 
-## 5. Dashboard — Lista de Eventos
+## 6. Dashboard — Lista de Eventos
 
 A tela principal exibe todos os eventos financeiros registrados, ordenados por data (mais recente primeiro).
 
@@ -199,7 +273,7 @@ A barra superior contém links para todas as funcionalidades:
 
 ---
 
-## 6. Perfil do Contribuinte
+## 7. Perfil do Contribuinte
 
 Registra os dados pessoais do contribuinte para fins fiscais.
 
@@ -226,7 +300,7 @@ Após salvar:
 
 ---
 
-## 7. Contas (Caixas)
+## 8. Contas (Caixas)
 
 Gerencia contas de corretora/banco no exterior. Cada conta funciona como um "caixa" independente.
 
@@ -268,11 +342,11 @@ Cada conta ativa oferece a rota `contas/<id>/importar/` para importar extratos C
 
 > **Deduplicação**: cada arquivo é identificado pelo hash SHA-256 do conteúdo. Reimportar o mesmo arquivo é idempotente — o lote existente é retornado sem criar eventos duplicados.
 
-> **Pré-condição**: o ativo referenciado pelo CSV deve estar previamente cadastrado (ver seção 8); linhas com ativo desconhecido falham com mensagem clara.
+> **Pré-condição**: o ativo referenciado pelo CSV deve estar previamente cadastrado (ver seção 9); linhas com ativo desconhecido falham com mensagem clara.
 
 ---
 
-## 8. Cadastro de Ativos
+## 9. Cadastro de Ativos
 
 Registra os ativos financeiros (ações, ETFs, REITs, etc.) negociados.
 
@@ -295,7 +369,7 @@ Registra os ativos financeiros (ações, ETFs, REITs, etc.) negociados.
 
 ---
 
-## 9. Lançamento de Eventos Financeiros
+## 10. Lançamento de Eventos Financeiros
 
 Tela central para registro de todas as operações financeiras.
 
@@ -354,7 +428,7 @@ Para dividendos com imposto retido na fonte:
 
 ---
 
-## 10. Posições
+## 11. Posições
 
 Exibe a carteira consolidada do contribuinte com posição por ativo e conta.
 
@@ -375,7 +449,7 @@ custo_medio = Σ(quantidade_compra × preço × PTAX) / Σ(quantidade_compra)
 
 ---
 
-## 11. Caixa
+## 12. Caixa
 
 Exibe o histórico e saldo de caixa de cada conta.
 
@@ -389,7 +463,7 @@ Exibe o histórico e saldo de caixa de cada conta.
 
 ---
 
-## 12. Posição de Abertura
+## 13. Posição de Abertura
 
 Permite importar posições pré-existentes (anteriores ao uso do sistema).
 
@@ -410,7 +484,7 @@ Permite importar posições pré-existentes (anteriores ao uso do sistema).
 
 ---
 
-## 13. Apuração Anual
+## 14. Apuração Anual
 
 Motor tributário que calcula o imposto devido no ano-calendário.
 
@@ -455,11 +529,11 @@ O botão **Fechar ano** executa o `AnnualClosingValidator` com 20+ validações:
 | Crédito não compensável | Não pode haver crédito exterior aproveitado acima do IR devido (sem carryforward de crédito — Lei 14.754/2023, art. 4º) |
 | Restituição retroativa | Estorno de imposto referente a ano já fechado exige retificação da declaração de origem |
 
-As violações são **agregadas**: todas são reportadas de uma vez, cada uma com mensagem explicativa.
+As violações são **agregadas**: todas são reportadas de uma vez, cada uma com mensagem explicativa. Para cada validação, veja o guia de [Troubleshooting — Se Algo Der Errado](#22-troubleshooting--se-algo-der-errado), com causa provável e passo a passo de correção.
 
 ---
 
-## 14. Relatório DIRPF
+## 15. Relatório DIRPF
 
 Gera os dados formatados para preenchimento da Declaração de Ajuste Anual (DIRPF).
 
@@ -485,7 +559,7 @@ O relatório é estruturado conforme o `DirpfSchema`:
 
 ---
 
-## 15. PTAX de Fechamento
+## 16. PTAX de Fechamento
 
 Para datas futuras ou sem cotação disponível no BCB, o sistema solicita a PTAX de fechamento (31/12) manualmente.
 
@@ -502,7 +576,7 @@ Para datas futuras ou sem cotação disponível no BCB, o sistema solicita a PTA
 
 ---
 
-## 16. Segurança
+## 17. Segurança
 
 Tela de administração de segurança do vault.
 
@@ -518,16 +592,16 @@ Tela de administração de segurança do vault.
 
 ### Backup e restore
 
+O backup exporta o banco cifrado com a mesma chave do vault. Para o fluxo completo de backup, restore em máquina nova e verificação de integridade, veja [Ciclo de Vida Multi-Anos e Backup](#21-ciclo-de-vida-multi-anos-e-backup).
+
 ```bash
 # Backup cifrado
 docker compose exec app python manage.py backup_encrypted /data/backup.enc
-
-# O backup é criptografado com a mesma chave do vault
 ```
 
 ---
 
-## 17. Documentos
+## 18. Documentos
 
 Upload e armazenamento cifrado de documentos comprobatórios.
 
@@ -544,9 +618,9 @@ Upload e armazenamento cifrado de documentos comprobatórios.
 
 ---
 
-## 18. Fluxo Completo — Passo a Passo
+## 19. Fluxo Completo — Passo a Passo
 
-### Roteiro funcional para apuração anual
+### Visão geral do caminho
 
 ```mermaid
 flowchart TD
@@ -565,7 +639,97 @@ flowchart TD
     L --> M[11. Preencher DIRPF no e-CAC]
 ```
 
-### Cenário de teste executado
+Abaixo, o mesmo roteiro como tutorial: cada passo diz o que fazer, o que você deve ver e o que conferir antes de avançar. O cenário usa os dados do teste de validação do sistema (João da Silva, contas A e B, ativos AAPL e LOSS) — substitua pelos seus dados reais.
+
+### Passo 1 — Configurar a senha de acesso
+
+Acesse `http://localhost:8000/bloqueado/` e defina uma senha forte (mínimo 8 caracteres). Ao confirmar, o sistema exibe a **recovery key**.
+
+![Recovery Key](images/02-recovery-key.png)
+
+✅ **Você deve ver:** a tela de recovery key. **Anote-a em papel ou cofre de senhas antes de prosseguir** — ela é a única forma de recuperar o acesso se a senha for esquecida (ver [Primeiro Acesso](#4-primeiro-acesso--configuração-de-segurança)).
+
+### Passo 2 — Cadastrar o perfil do contribuinte
+
+Em **Perfil**, preencha nome completo e CPF (obrigatórios) e a condição de residência fiscal.
+
+![Perfil preenchido](images/04b-perfil-preenchido.png)
+
+✅ **Você deve ver:** a tela confirmando os dados salvos. **Confira:** a condição de residência **não** pode ficar `UNKNOWN`, senão o fechamento do ano será bloqueado ([Perfil](#7-perfil-do-contribuinte)).
+
+### Passo 3 — Criar as contas de corretora
+
+Em **Contas**, crie uma conta para cada corretora. No cenário: **Conta A** (Interactive Brokers) e **Conta B** (Charles Schwab).
+
+![Conta preenchida](images/05b-conta-a-preenchida.png)
+
+✅ **Você deve ver:** as duas contas listadas como ativas. **Confira:** o tipo (CASH/CUSTODY/MARGIN) e se a conta é remunerada — contas remuneradas exigem lançamentos de JUROS ([Contas](#8-contas-caixas)).
+
+### Passo 4 — Cadastrar os ativos
+
+Em **Cadastro de Ativos**, registre cada ticker **antes** de lançar eventos que o referenciem. No cenário: **AAPL** (FOREIGN_EQUITY) e um ativo de perda (LOSS).
+
+![Ativo AAPL cadastrado](images/07b-ativo-aapl.png)
+
+✅ **Você deve ver:** os ativos listados com natureza jurídica definida. **Confira:** nenhum ativo pode ficar `UNKNOWN` — isso bloqueia a apuração ([Cadastro de Ativos](#9-cadastro-de-ativos)).
+
+### Passo 5 — Registrar os eventos
+
+Em **Novo lançamento**, registre as operações na ordem cronológica em que ocorreram. O cenário usa 7 eventos: aportes nas duas contas, compras de AAPL, um dividendo e vendas (incluindo uma venda com prejuízo, para demonstrar a compensação de perdas).
+
+![Compra AAPL](images/09-compra-aapl.png)
+
+**Ao lançar o dividendo**, preencha o valor bruto e o imposto retido na fonte (Tax USD), marcando a confirmação da retenção na mesma data quando for o caso:
+
+![Dividendo preenchido](images/10-dividendo-preenchido.png)
+
+> ⚠️ **Atenção ao teto de 15%:** para que o fechamento do ano seja aprovado, o imposto retido no exterior deve ficar dentro do teto de 15% do rendimento bruto (Lei 14.754/2023, art. 5º) — ex.: dividendo de US$ 200 com IR de US$ 20 (10%). Uma retenção de 30% é válida como lançamento, mas o fechamento será **bloqueado** pelo validador (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado)).
+
+![Venda AAPL](images/11-venda-aapl.png)
+
+✅ **Você deve ver:** cada evento na lista do dashboard com a coluna PTAX preenchida automaticamente. **Confira:** se alguma linha mostrar erro de conversão, resolva antes de prosseguir ([Lançamento de Eventos](#10-lançamento-de-eventos-financeiros)).
+
+> 💡 Se você já possuía investimentos antes de começar a usar o sistema, registre-os primeiro em [Posição de Abertura](#13-posição-de-abertura) — sem isso, vendas sobre a posição antiga podem parecer "venda a descoberto".
+
+### Passo 6 — Conferir posições e caixa
+
+Antes de apurar, valide que o sistema reflete a realidade das corretoras.
+
+![Posições](images/14-posicoes.png)
+
+✅ **Você deve ver:** a quantidade de ações e o custo médio de cada ativo, e o saldo de caixa de cada conta. **Confira:** esses números contra o extrato da corretora — qualquer divergência agora evita retrabalho no fechamento.
+
+### Passo 7 — Executar a apuração anual
+
+Em **Apuração**, selecione o ano-calendário e execute o cálculo. No cenário: rendimento bruto de R$ 5.239,82, perdas de R$ 2.341,28, base de R$ 2.898,54 e IR de R$ 434,78.
+
+![Apuração 2026](images/16-apuracao-2026.png)
+
+✅ **Você deve ver:** o resultado consolidado com o imposto a 15%. Se a TaxRule do ano ainda não estiver confirmada, confirme-a nesta tela.
+
+### Passo 8 — Fechar o ano
+
+Clique em **Fechar ano**. O validador executa todas as verificações e reporta violações agregadas, se houver.
+
+![Apuração fechada](images/16b-apuracao-fechada.png)
+
+✅ **Você deve ver:** a confirmação do fechamento. **Se aparecerem violações:** elas listam tudo de uma vez — resolva cada uma com o guia de [Troubleshooting](#22-troubleshooting--se-algo-der-errado) e repita. Após fechar, o ano fica selado ([Ciclo de Vida Multi-Anos](#21-ciclo-de-vida-multi-anos-e-backup)).
+
+### Passo 9 — Gerar o Relatório DIRPF
+
+Em **Relatório**, gere os dados formatados para a declaração do ano fechado. Se a PTAX de 31/12 não estiver disponível, o sistema solicitará a cotação manual ([PTAX de Fechamento](#16-ptax-de-fechamento)) antes de finalizar.
+
+![Relatório DIRPF](images/17c-relatorio-com-ptax.png)
+
+✅ **Você deve ver:** todas as seções preenchidas — rendimentos, bens e direitos, imposto pago/retido, CBE, DARF e altas rendas.
+
+### Passo 10 — Exportar e entregar
+
+Baixe o **PDF** do relatório e a **memória de cálculo** para os comprovantes. Com os valores em mãos, preencha a DIRPF no e-CAC (e a CBE no BCB, se sinalizada como obrigatória).
+
+✅ **Checklist final:** relatório em PDF baixado, memória de cálculo arquivada, DARF 0211 agendado para pagamento até o último dia útil de abril, e backup cifrado feito ([Backup](#213-backup--exportar-os-dados-cifrados)).
+
+### Resumo do cenário de teste
 
 | Passo | Ação | Resultado |
 |-------|------|-----------|
@@ -574,8 +738,6 @@ flowchart TD
 | 3 | Criar Conta A (Interactive Brokers) e Conta B (Charles Schwab) | ✅ 2 contas ativas |
 | 4 | Cadastrar ativos AAPL e LOSS | ✅ 2 ativos registrados |
 | 5 | Registrar 7 eventos (aportes, compras, dividendo, vendas) | ✅ Todos com PTAX automática |
-
-> **Nota**: para que o fechamento do ano seja aprovado, o imposto retido no exterior do exemplo deve ficar dentro do teto de 15% do rendimento bruto (Lei 14.754/2023, art. 5º) — ex.: dividendo de US$ 200 com IR de US$ 20 (10%). Uma retenção de US$ 60 (30%) é válida como lançamento, mas o fechamento será bloqueado pelo validador (RF-VAL-008), com as violações exibidas na tela.
 | 6 | Verificar posições (AAPL: 50 ações restantes) | ✅ Custo médio correto |
 | 7 | Executar apuração 2026 | ✅ IR calculado: R$ 434,78 |
 | 8 | Fechar ano 2026 | ✅ Validações aprovadas |
@@ -584,7 +746,7 @@ flowchart TD
 
 ---
 
-## 19. Regras de Negócio
+## 20. Regras de Negócio
 
 ### Lei 14.754/2023 — Tributação de aplicações financeiras no exterior
 
@@ -615,7 +777,106 @@ Apenas **Estados Unidos (US)** — permite crédito de imposto federal retido.
 
 ---
 
-## 20. Glossário
+## 21. Ciclo de Vida Multi-Anos e Backup
+
+### 21.1 O que acontece quando o ano é fechado
+
+Fechar um ano-calendário **sela** a apuração daquele período: os números do ano ficam imutáveis e o Relatório DIRPF correspondente pode ser consultado e reexportado quando necessário. Não é possível editar eventos que alterem o resultado de um ano já fechado.
+
+Consequências práticas:
+
+- **Ano fechado não se reabre** — correções no período passam pela retificação da declaração, não pelo sistema
+- **Restituição retroativa** (estorno de imposto de um ano fechado) exige retificação da declaração de origem — o validador bloqueia se você tentar lançá-la no ano corrente (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado))
+- O relatório e a memória de cálculo do ano fechado continuam disponíveis para consulta e download
+
+### 21.2 O ano seguinte com carry-forward de perdas
+
+Você não precisa fazer nada especial para levar perdas para o ano seguinte — o sistema compensa automaticamente (FIFO, sem expiração). O que muda no novo ano:
+
+1. O saldo de prejuízo do ano fechado entra automaticamente na apuração do ano novo
+2. Os rendimentos do novo ano acumulam do zero
+3. A posição de 31/12 do ano fechado vira o ponto de partida das posições do ano novo
+
+**Exemplo numérico:**
+
+| | Ano 1 (fechado) | Ano 2 |
+|---|----------------:|------:|
+| Ganho de capital + rendimentos | R$ 1.000 | R$ 3.000 |
+| Perdas do próprio ano | R$ 2.000 | — |
+| Base tributável | R$ 0 | R$ 3.000 − R$ 1.000 (carry-forward) = **R$ 2.000** |
+| IR devido (15%) | R$ 0 | **R$ 300** |
+
+Após a apuração do ano 2, basta repetir o fluxo: [Apuração](#14-apuração-anual) → conferir validações → **Fechar ano** → [Relatório DIRPF](#15-relatório-dirpf).
+
+### 21.3 Backup — exportar os dados cifrados
+
+O backup exporta o banco de dados **cifrado** com a mesma chave do vault — o arquivo é inútil sem a sua senha/recovery key:
+
+```bash
+# Backup cifrado
+docker compose exec app python manage.py backup_encrypted /data/backup.enc
+```
+
+**Rotina recomendada:** faça backup após cada fechamento de ano e a cada lote relevante de lançamentos. Guarde o `backup.enc` fora da máquina (pendrive, cofre de arquivos) junto de um registro da **recovery key**.
+
+### 21.4 Restore — restaurar em máquina nova
+
+Para migrar de máquina ou recuperar de perda:
+
+1. **Instale o sistema** na máquina nova (ver [Requisitos e Instalação](#3-requisitos-e-instalação)) — não complete o setup de segurança ainda
+2. **Copie o backup** para o volume de dados do container (ex.: o diretório mapeado para `/data`)
+3. **Restaure** com o comando correspondente do management command de restore, apontando para o `backup.enc`
+4. **Desbloqueie** com a senha da época do backup (a VaultKey restaurada é a mesma — senhas definidas depois do backup não abrem os dados restaurados)
+5. **Verifique a integridade:** acesse [Posições](#11-posições), [Caixa](#12-caixa) e a última [Apuração](#14-apuração-anual) fechada — os valores devem bater com o registro da época do backup
+
+> ⚠️ Sem a senha **ou** a recovery key da época do backup, os dados são irrecuperáveis por design — a criptografia não tem "backdoor". Por isso a rotina recomendada guarda a recovery key junto do backup.
+
+---
+
+## 22. Troubleshooting — Se Algo Der Errado
+
+### 22.1 O botão "Fechar ano" me mostrou uma lista de erros
+
+Ao clicar em **Fechar ano**, o `AnnualClosingValidator` executa todas as validações e as reporta **de uma vez** — cada violação aparece com uma mensagem explicativa. Isso é esperado: o sistema prefere listar tudo do que fazer você corrigir um item por vez. Abaixo, cada validação com sua causa provável e a correção.
+
+| Validação | Mensagem típica | Causa provável | Como corrigir |
+|-----------|-----------------|----------------|---------------|
+| Residência fiscal | Perfil com condição `UNKNOWN` | Perfil cadastrado mas condição de residência não informada | [Perfil](#7-perfil-do-contribuinte): preencha "Condição de residência fiscal" e, se aplicável, datas de início/fim |
+| Venda a descoberto | Venda maior que a posição na data | Evento de venda com quantidade acima do que você possuía (erro de digitação, evento duplicado ou posição de abertura faltante) | Confira o evento na lista; corrija a quantidade ou cadastre a [Posição de Abertura](#13-posição-de-abertura) que antecede a venda |
+| Ativos UNKNOWN | Tipo de ativo não definido | Ativo cadastrado com natureza `UNKNOWN` (ou `CONTROLLED_ENTITY`/`TRUST`) | [Cadastro de Ativos](#9-cadastro-de-ativos): defina a natureza jurídica correta — esses tipos bloqueiam apuração |
+| Erros de conversão | PTAX ausente para a data | Cotação indisponível no BCB (data futura, fim de semana sem fallback) | Aguarde a cotação ser publicada ou use o override manual do evento; PTAX de 31/12 é solicitada em formulário próprio ([PTAX de Fechamento](#16-ptax-de-fechamento)) |
+| Perfil incompleto | Dados do contribuinte ausentes | Nome ou CPF vazios | [Perfil](#7-perfil-do-contribuinte): preencha nome completo e CPF |
+| Regra não confirmada | TaxRule não confirmada | Regra tributária do ano ainda sem confirmação | Confirme a TaxRule na tela de Apuração antes de fechar o ano |
+| Transferências solitárias | Transferência sem contraparte | `BROKER_TRANSFER_IN` sem o `OUT` correspondente (ou vice-versa) | Registre as duas pontas da transferência de custódia — a camada de serviço exige o par |
+| Retenção acima do limite | Imposto exterior > 15% do rendimento | Retenção na fonte acima de 15% do rendimento bruto (ex.: 30% retido sobre dividendo) | ⚠️ O lançamento é válido, mas o **fechamento é bloqueado** (Lei 14.754/2023, art. 5º). Verifique o valor lançado; se estiver correto, o excedente acima de 15% não gera crédito — avalie com seu contador |
+| Crédito não compensável | Crédito acima do IR devido | Crédito exterior aproveitado excedendo o imposto brasileiro | Não há carry-forward de crédito (Lei 14.754/2023, art. 4º). Revise os lançamentos de retenção; o crédito é limitado ao IR devido |
+| Restituição retroativa | Estorno em ano fechado | `WITHHOLDING_REFUND` referente a imposto de ano já fechado | Exige retificação da declaração de origem — não é possível incluir no ano corrente; consulte seu contador |
+
+### 22.2 Outros erros comuns
+
+**"Ativo não cadastrado" ao importar CSV** — o importador de extratos não cria ativos automaticamente. Cadastre o ticker em [Cadastro de Ativos](#9-cadastro-de-ativos) e repita a importação (o arquivo é idempotente por hash SHA-256 — nada será duplicado).
+
+**PTAX indisponível ao lançar evento** — o sistema tenta um fallback de até 10 dias úteis. Se ainda assim falhar (data muito recente ou feriado prolongado), use o override manual da cotação no formulário do evento, registrando o motivo.
+
+**"Servidor travado. Desbloqueie em /bloqueado/"** — o vault foi bloqueado por inatividade (10 min por padrão). É o comportamento de segurança esperado, não um erro. Desbloqueie com senha ou recovery key ([Bloqueio e Desbloqueio](#5-tela-de-bloqueio-e-desbloqueio)).
+
+**Erros 500 na tela de configuração inicial** — se a configuração de segurança falhar com erro, verifique os logs do container (`docker compose logs app`) e confirme que o volume `/data` está gravável. Se o problema persistir, é candidata a bug: registre com o log completo.
+
+### 22.3 Checklist antes de fechar o ano
+
+Para minimizar surpresas, antes de clicar em **Fechar ano** confirme:
+
+1. Perfil completo, com condição de residência ≠ `UNKNOWN`
+2. Todos os ativos com natureza jurídica definida (nenhum `UNKNOWN`)
+3. Nenhuma venda acima da posição possuída na data
+4. Todas as transferências de custódia com as duas pontas
+5. Retenções exteriores dentro do teto de 15% do rendimento bruto
+6. TaxRule do ano confirmada
+7. [Posições](#11-posições) e [Caixa](#12-caixa) conferidos com o extrato da corretora
+
+---
+
+## 23. Glossário
 
 | Termo | Definição |
 |-------|-----------|
@@ -634,7 +895,7 @@ Apenas **Estados Unidos (US)** — permite crédito de imposto federal retido.
 
 ---
 
-## 21. Referências Legais
+## 24. Referências Legais
 
 | Norma | Assunto |
 |-------|---------|
