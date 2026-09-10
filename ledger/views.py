@@ -68,7 +68,7 @@ class EventCorrectView(generic.UpdateView):
         ev = self.get_object()
         initial = {f: getattr(ev, f) for f in
                    ("event_type", "account", "trade_date", "quantity",
-                    "price_usd", "fee_usd", "tax_usd", "amount_usd", "notes")}
+                    "price_usd", "fee_usd", "amount_usd", "notes")}
         initial["asset_ticker"] = ev.asset.ticker if ev.asset else None
         return initial
 

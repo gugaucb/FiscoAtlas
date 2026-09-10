@@ -104,9 +104,31 @@ def test_report_segrega_ineligivel(setup):
     assert linha["credit_used_brl"] == Decimal("0.00")
 
 
-def test_evento_sem_pagamento_legado_mantem_credito(setup):
-    """Transição: evento antecipado à entidade ForeignTaxPayment não é punido."""
+def test_evento_legado_sem_pagamento_tem_credito_zero(setup):
+    """Ticket 04 (auditoria-fiscal): ForeignTaxPayment é a fonte única da
+    retenção. O teste anterior esperava que o engine caísse no campo legado
+    FinancialEvent.tax_usd — comportamento removido porque documentava
+    retenção sem fatos (país/jurisdição/data), punindo o crédito. Eventos
+    antigos recebem um ForeignTaxPayment pela migração 0015, com fatos
+    UNKNOWN → não elegível até classificação (sem regra fiscal silenciosa).
+    Sem pagamento documentado, não há retenção a creditar."""
+    from ledger.models import ForeignTaxPayment
+
     ev = _dividendo(setup, foreign_tax_payment_date=None, confirm_same_day=True)
-    ev.foreign_tax_payments.all().delete()  # simula legado
+    ev.foreign_tax_payments.all().delete()
     resultado = _compute()
-    assert resultado["withholding_credit_brl"] == Decimal("75.00")
+    assert resultado["withholding_credit_brl"] == Decimal("0.00")
+    assert resultado["ineligible_foreign_tax_brl"] == Decimal("0.00")
+
+    # resultado da migração 0015: pagamento legado com fatos UNKNOWN fica
+    # documentado mas segregado como não elegível até classificação
+    ForeignTaxPayment.objects.create(
+        financial_event=ev, tax_usd=Decimal(30),
+        foreign_tax_payment_date=ev.trade_date,
+        country_code="US", jurisdiction_level="UNKNOWN", tax_type="UNKNOWN",
+        capture_method="SYSTEM", date_evidence_source="UNKNOWN",
+        source_reference="migração do campo legado tax_usd",
+    )
+    resultado = _compute()
+    assert resultado["withholding_credit_brl"] == Decimal("0.00")
+    assert resultado["ineligible_foreign_tax_brl"] == Decimal("150.00")

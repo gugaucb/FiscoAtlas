@@ -67,15 +67,22 @@ class EventForm(forms.ModelForm):
     source_document_id = forms.CharField(max_length=128, required=False, label="ID do documento")
     source_reference = forms.CharField(max_length=255, required=False, label="Referência do documento")
 
+    tax_usd = forms.DecimalField(
+        required=False, min_value=Decimal("0.01"),
+        label=LABELS["tax_usd"],
+        help_text="Imposto retido no exterior — gera registro em ForeignTaxPayment "
+                  "com país, jurisdição, tipo e data documentados.",
+    )
+
     class Meta:
         model = FinancialEvent
         fields = ["event_type", "account", "trade_date", "quantity",
-                  "price_usd", "fee_usd", "tax_usd", "amount_usd",
+                  "price_usd", "fee_usd", "amount_usd",
                   "split_ratio_from", "split_ratio_to", "notes"]
         labels = {"event_type": LABELS["event_type"], "account": LABELS["account"],
                   "trade_date": LABELS["trade_date"], "quantity": LABELS["quantity"],
                   "price_usd": LABELS["price_usd"], "fee_usd": LABELS["fee_usd"],
-                  "tax_usd": LABELS["tax_usd"], "amount_usd": LABELS["amount_usd"],
+                  "amount_usd": LABELS["amount_usd"],
                   "split_ratio_from": LABELS["split_ratio_from"],
                   "split_ratio_to": LABELS["split_ratio_to"],
                   "notes": LABELS["notes"]}

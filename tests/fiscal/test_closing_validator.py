@@ -130,7 +130,7 @@ def test_bloqueia_venda_acima_da_custodia(ambiente):
     FinancialEvent.objects.create(
         event_type="SELL", account=conta, asset=ev.asset, trade_date=date(2026, 6, 1),
         quantity=Decimal(99), price_usd=Decimal(110), amount_usd=Decimal("10890"),
-        fx_rate=RATE, amount_brl=Decimal(54450), fee_usd=Decimal(0), tax_usd=Decimal(0),
+        fx_rate=RATE, amount_brl=Decimal(54450), fee_usd=Decimal(0),
     )
     with pytest.raises(ValidationError, match="custódia"):
         AnnualClosingValidator(2026).validate_or_raise()

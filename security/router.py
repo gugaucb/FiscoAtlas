@@ -17,8 +17,10 @@ class SecurityRouter:
         return None
 
     def allow_migrate(self, db, app_label, **hints):
-        vault = settings.SECURITY_VAULT_ALIAS
         if app_label == _SECURITY_APP:
-            return db == vault
-        # Outros apps: não migram na base do vault quando ela é separada.
-        return not (db == vault and vault != "default")
+            return db == settings.SECURITY_VAULT_ALIAS
+        # Outros apps nunca migram na base "vault" (alias dedicado ao vault
+        # de chaves), nem quando SECURITY_VAULT_ALIAS aponta para "default"
+        # (testes) — migram os apps dos outros aliases de novo e queries de
+        # migração via router iriam para outro alias com schema deslocado.
+        return db != "vault"

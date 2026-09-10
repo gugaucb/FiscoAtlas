@@ -93,9 +93,8 @@ class FinancialEvent(models.Model):
     price_usd = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     fee_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     amount_usd = models.DecimalField(max_digits=20, decimal_places=8)
-    # DEPRECATED: fonte canônica do imposto é ForeignTaxPayment (0..N por evento).
-    # Mantido durante a transição; remoção no ticket 03 (engine/relatório/memória).
-    tax_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+    # Auditoria-fiscal 04: o campo tax_usd duplicado foi removido — a fonte
+    # canônica do imposto pago no exterior é ForeignTaxPayment (0..N por evento).
     fx_rate = models.DecimalField(max_digits=12, decimal_places=8, null=True, blank=True)
     amount_brl = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     notes = models.CharField(max_length=500, blank=True)
@@ -116,6 +115,11 @@ class FinancialEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} {self.trade_date} {self.asset or ''} {self.amount_usd}"
+
+    @property
+    def foreign_tax_total_usd(self) -> Decimal:
+        """Soma dos impostos pagos no exterior (fonte: ForeignTaxPayment)."""
+        return sum((p.tax_usd for p in self.foreign_tax_payments.all()), Decimal(0))
 
 
 JURISDICTION_LEVELS = [("FEDERAL", "Federal"), ("STATE", "Estadual"), ("LOCAL", "Municipal"), ("UNKNOWN", "Desconhecida")]

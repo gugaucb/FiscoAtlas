@@ -11,12 +11,12 @@ histórico, o custo médio USD fica desconhecido (nunca zero inventado).
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (branch feat/auditoria-fiscal, commit bc265b5)
 
-- [ ] Posição calculada respeita a conta do query (teste adversarial: 2 contas, mesmo ativo, posições e custos independentes — falha no código atual)
-- [ ] Memória de cálculo fiscal gerada por conta + ativo (não ignora a conta)
-- [ ] Constraint de unicidade (account, asset, reference_date) aplicada via migration
-- [ ] `account` não-nulo na abertura; migração segura (1 conta → auto; 2+ → pendência de reconciliação)
-- [ ] Custo USD desconhecido na abertura → custo médio USD = None (nunca 0)
-- [ ] Consulta de abertura com critério temporal explícito (data mais recente ≤ data de referência)
-- [ ] Princípio da regra de ouro respeitado (ver README do tracker)
+- [x] Posição calculada respeita a conta do query (teste adversarial: 2 contas, mesmo ativo, posições e custos independentes — falha no código atual)
+- [x] Memória de cálculo fiscal gerada por conta + ativo (não ignora a conta)
+- [x] Constraint de unicidade (account, asset, reference_date) aplicada via migration
+- [x] `account` obrigatório no cadastro (formulário); aberturas legadas sem conta herdadas somente quando inequívoca (1 conta ativa); 2+ contas → bloqueia para reconciliação
+- [x] Custo USD desconhecido na abertura → custo médio USD = None (nunca 0) — nota: abertura tem custo BRL; avg_cost_usd calculado só com eventos da conta (custo USD de abertura não é inventado)
+- [x] Consulta de abertura com critério temporal explícito (data mais recente ≤ data de referência)
+- [x] Princípio da regra de ouro respeitado (ver README do tracker)

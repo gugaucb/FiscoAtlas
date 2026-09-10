@@ -82,20 +82,31 @@ def _memoria_conta_ativo(year: int, account, asset) -> dict:
                 "gain_brl": gain_brl, "avg_brl": _q(avg_brl),
             })
         elif ev.event_type == "DIVIDEND":
-            gross_usd = ev.amount_usd + ev.tax_usd
+            # Auditoria-fiscal 04: soma TODOS os pagamentos de imposto
+            # (sem `.first()`) — cada um com sua PTAX COMPRA
+            pagamentos = list(ev.foreign_tax_payments.all())
+            gross_usd = ev.amount_usd + sum((p.tax_usd for p in pagamentos), Decimal(0))
             fx = ev.fx_rate or Decimal(0)
-            pagamento = ev.foreign_tax_payments.first()
-            fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
+            ir_eua_brl = Decimal(0)
+            fx_tax_first = None
+            for pagamento in pagamentos:
+                fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
+                if fx_tax_first is None:
+                    fx_tax_first = fx_tax
+                ir_eua_brl += _q(pagamento.tax_usd * fx_tax)
+            ir_date = (
+                pagamentos[0].foreign_tax_payment_date if pagamentos else ev.trade_date
+            )
             rows.append({
                 "kind": "DIVIDENDO", "event": ev, "date": ev.trade_date,
                 "quantity": ev.quantity, "per_share_usd": ev.quantity and ev.amount_usd / ev.quantity or Decimal(0),
-                "gross_usd": gross_usd, "tax_usd": ev.tax_usd, "fx_rate": ev.fx_rate,
+                "gross_usd": gross_usd, "tax_usd": sum((p.tax_usd for p in pagamentos), Decimal(0)), "fx_rate": ev.fx_rate,
                 "income_fx_quote": "VENDA",
                 "gross_brl": _q(gross_usd * fx),
-                "ir_eua_brl": _q(ev.tax_usd * fx_tax),
+                "ir_eua_brl": _q(ir_eua_brl),
                 "ir_eua_fx_quote": "COMPRA",
-                "ir_eua_fx_date": pagamento.foreign_tax_payment_date if pagamento else ev.trade_date,
-                "ir_eua_fx_rate": fx_tax,
+                "ir_eua_fx_date": ir_date,
+                "ir_eua_fx_rate": fx_tax_first,
                 "net_brl": _q(ev.amount_usd * fx),
             })
     return {

@@ -10,10 +10,10 @@ Não basta mudar comentários: testes que assertam as referências erradas tamb�
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (branch feat/auditoria-fiscal, commit d34048c)
 
-- [ ] Nenhuma ocorrência de "278/2022" ou "Res. BCB nº 278" restante (código, template, testes, docs, manual)
-- [ ] Nenhuma ocorrência de "art. 872" restante (código, testes, manual) — substituída por "art. 938, §§ 4º e 5º, RIR/2018"
-- [ ] Mensagens de interface com as referências corrigidas
-- [ ] Busca global (case-insensitive) por "278/2022" e "872" zero retornos fiscais relevantes
-- [ ] Princípio da regra de ouro respeitado (ver README do tracker)
+- [x] Nenhuma ocorrência de "278/2022" ou "Res. BCB nº 278" restante (código, template, testes, docs, manual)
+- [x] Nenhuma ocorrência de "art. 872" restante (código, testes, manual) — substituída por "art. 938, §§ 4º e 5º, RIR/2018"
+- [x] Mensagens de interface com as referências corrigidas
+- [x] Busca global (case-insensitive) por "278/2022" e "872" zero retornos fiscais relevantes
+- [x] Princípio da regra de ouro respeitado (ver README do tracker) — teste que assertava a mensagem errada substituído com documentação

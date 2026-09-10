@@ -137,7 +137,7 @@ def test_ponta_solta_gera_alerta_no_validator(contas, aapl):
         event_type="BROKER_TRANSFER_OUT", account=a, asset=aapl,
         trade_date=date(2026, 2, 1), quantity=Decimal(40),
         amount_usd=Decimal(6000), fx_rate=RATE, amount_brl=Decimal(30000),
-        fee_usd=Decimal(0), tax_usd=Decimal(0), transfer_pair_id=uuid4(),
+        fee_usd=Decimal(0), transfer_pair_id=uuid4(),
     )
     from fiscal.validator import AnnualClosingValidator
     with pytest.raises(Exception, match="inconsis"):
