@@ -11,7 +11,7 @@ cascata explícita) — nunca altera história fechada invisivelmente.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Teste de regressão: perda R$ 2.000 em 2024, lucro R$ 1.000 em 2025; fechar 2025 → saldo restante R$ 1.000; fechar 2025 de novo → saldo CONTINUA R$ 1.000 (falha no código atual)
 - [ ] Saldo das perdas restaurado antes do recálculo dentro de transação atômica
