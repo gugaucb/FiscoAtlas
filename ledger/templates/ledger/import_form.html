@@ -12,18 +12,27 @@
 
 {% if preview %}
 <div class="card">
-  <h2>Pré-visualização ({{ preview|length }} linha(s) suportada(s))</h2>
+  <h2>Pré-visualização ({{ n_suportadas }} linha(s) suportada(s), {{ pendencias|length }} pendente(s))</h2>
   <table>
-    <thead><tr><th>Linha</th><th>Tipo</th><th>Ticker</th><th>Data</th><th>Qtd</th><th>Preço</th><th>Valor</th></tr></thead>
+    <thead><tr><th>Linha</th><th>Tipo</th><th>Ticker</th><th>Data</th><th>Qtd</th><th>Preço</th><th>Valor</th><th>Status</th></tr></thead>
     <tbody>
       {% for r in preview %}
+      {% if r.status == "OK" %}
       <tr><td>{{ r.line }}</td><td>{{ r.event_type }}</td><td>{{ r.ticker }}</td>
-          <td>{{ r.trade_date }}</td><td>{{ r.quantity }}</td><td>{{ r.price }}</td><td>{{ r.amount }}</td></tr>
+          <td>{{ r.trade_date }}</td><td>{{ r.quantity }}</td><td>{{ r.price }}</td><td>{{ r.amount }}</td>
+          <td>OK</td></tr>
+      {% else %}
+      <tr class="error">
+          <td>{{ r.line }}</td><td>—</td><td>{{ r.raw_action }}</td><td>—</td><td>—</td><td>—</td><td>—</td>
+          <td><strong>BLOQUEANTE</strong>: {{ r.reason }}</td></tr>
+      {% endif %}
       {% empty %}
-      <tr><td colspan="7">Nenhuma linha reconhecida (ações suportadas: Buy, Dividend).</td></tr>
+      <tr><td colspan="8">Nenhuma linha reconhecida (ações suportadas: Buy, Sell, Dividend).</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  <p><small>Ações suportadas: Buy, Sell, Dividend/Reinvest Dividend. Qualquer outra ação
+  (ex.: Transfer) fica como pendência — nenhuma linha do extrato é descartada sem rastro.</small></p>
 </div>
 {% endif %}
 
@@ -31,6 +40,12 @@
   {% csrf_token %}
   <h2>Enviar arquivo</h2>
   <input type="file" name="arquivo" accept=".csv,text/csv">
+  {% if pendencias %}
+  <label>
+    <input type="checkbox" name="reconhecer_pendencias" value="1">
+    Reconheço que {{ pendencias|length }} linha(s) com ação não suportada serão registradas como pendências e NÃO serão importadas.
+  </label>
+  {% endif %}
   <button type="submit" class="btn">Importar</button>
 </form>
 {% endblock %}

@@ -206,7 +206,53 @@ class ImportBatch(models.Model):
     file_hash = models.CharField(max_length=64, unique=True)
     events_created = models.PositiveIntegerField(default=0)
     rows_total = models.PositiveIntegerField(default=0)
+    rows_source = models.PositiveIntegerField(default=0)
+    rows_imported = models.PositiveIntegerField(default=0)
+    rows_unsupported = models.PositiveIntegerField(default=0)
+    rows_ignored_confirmed = models.PositiveIntegerField(default=0)
     imported_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def reconciled(self) -> bool:
+        """Auditoria-fiscal 01: linhas do arquivo = importadas + pendências +
+        ignoradas com reconhecimento explícito. Nada desaparece sem rastro."""
+        return self.rows_source == (
+            self.rows_imported + self.rows_unsupported + self.rows_ignored_confirmed
+        )
 
     def __str__(self):
         return f"{self.source} {self.imported_at:%d/%m/%Y %H:%M} (+{self.events_created})"
+
+
+class ImportIssue(models.Model):
+    """Auditoria-fiscal 01: linha de extrato não importada — pendência
+    explícita e rastreável. Nenhuma linha do CSV pode desaparecer
+    silenciosamente; toda linha não tratada vira um issue PENDING.
+
+    Estados: PENDING → RESOLVED_IMPORTED (lançado manualmente) ou
+    RESOLVED_IGNORED (ignorado com justificativa obrigatória)."""
+
+    STATUS_PENDING = "PENDING"
+    STATUS_RESOLVED_IMPORTED = "RESOLVED_IMPORTED"
+    STATUS_RESOLVED_IGNORED = "RESOLVED_IGNORED"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pendente"),
+        (STATUS_RESOLVED_IMPORTED, "Resolvido — lançado manualmente"),
+        (STATUS_RESOLVED_IGNORED, "Resolvido — ignorado com justificativa"),
+    ]
+
+    batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="issues")
+    line_number = models.PositiveIntegerField()
+    raw_action = models.CharField(max_length=128, blank=True)
+    raw_data = models.JSONField(default=dict)
+    severity = models.CharField(max_length=16, default="BLOCKING")
+    reason = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    resolution = models.CharField(max_length=255, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["batch", "line_number"]
+
+    def __str__(self):
+        return f"Issue #{self.pk} lote {self.batch_id} linha {self.line_number} ({self.status})"
