@@ -8,17 +8,42 @@ OPENING_DATE = date_cls(2025, 12, 31)
 
 class PositionService:
     @staticmethod
-    def _opening(asset, until=None) -> dict:
-        """Custo fiscal de abertura (31/12/2025) já convertido em BRL."""
+    def _opening(account, asset, until=None) -> dict:
+        """Custo fiscal de abertura da CONTA (31/12/2025) já convertido em BRL.
+
+        Auditoria-fiscal 03: a abertura é estritamente por conta + ativo —
+        nunca soma entre corretoras. Com 2+ contas ativas, aberturas sem conta
+        (legado) são ambíguas e bloqueiam em vez de adivinhar.
+        """
         if until and until < OPENING_DATE:
             return {"quantity": Decimal(0), "cost_brl": Decimal(0)}
-        op = OpeningPosition.objects.filter(asset=asset).first()
-        if not op:
-            return {"quantity": Decimal(0), "cost_brl": Decimal(0)}
-        return {"quantity": op.quantity, "cost_brl": op.total_cost_brl}
+        op = (
+            OpeningPosition.objects.filter(account=account, asset=asset)
+            .order_by("-reference_date")
+            .first()
+        )
+        if op:
+            return {"quantity": op.quantity, "cost_brl": op.total_cost_brl}
+        # Legado: abertura sem conta só se a atribuição for inequívoca.
+        legacy = (
+            OpeningPosition.objects.filter(account__isnull=True, asset=asset)
+            .order_by("-reference_date")
+            .first()
+        )
+        if legacy:
+            from ledger.models import BrokerAccount
+            n_contas = BrokerAccount.objects.filter(active=True).count()
+            if n_contas > 1:
+                raise ValueError(
+                    f"Posição de abertura do ativo {asset.ticker} sem conta definida "
+                    "e há mais de uma conta ativa: reconcilie a posição de abertura "
+                    "por conta antes de apurar (não é possível adivinhar a corretora)."
+                )
+            return {"quantity": legacy.quantity, "cost_brl": legacy.total_cost_brl}
+        return {"quantity": Decimal(0), "cost_brl": Decimal(0)}
 
     def position(self, account, asset, until=None, exclude_event_id=None) -> dict:
-        opening = self._opening(asset, until)
+        opening = self._opening(account, asset, until)
         qty = opening["quantity"]
         cost_usd = Decimal(0)
         cost_brl = opening["cost_brl"]
@@ -72,7 +97,7 @@ class PositionService:
         qty = Decimal(0)
         cost_usd = Decimal(0)
         cost_brl = Decimal(0)
-        opening = self._opening(asset, until)
+        opening = self._opening(account, asset, until)
         qty = opening["quantity"]
         cost_brl = opening["cost_brl"]
         out = []

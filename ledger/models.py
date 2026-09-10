@@ -192,6 +192,17 @@ class OpeningPosition(models.Model):
     total_cost_brl = models.DecimalField(max_digits=20, decimal_places=8)
     notes = models.CharField(max_length=500, blank=True)
 
+    class Meta:
+        constraints = [
+            # Auditoria-fiscal 03: uma abertura por conta + ativo + data
+            # (aberturas legadas sem conta permanecem permitidas no schema,
+            # mas a consulta fiscal é sempre por conta — ver ledger/position.py)
+            models.UniqueConstraint(
+                fields=["account", "asset", "reference_date"],
+                name="uniq_opening_account_asset_date",
+            ),
+        ]
+
     @property
     def average_cost_brl(self):
         return self.total_cost_brl / self.quantity if self.quantity else Decimal(0)
