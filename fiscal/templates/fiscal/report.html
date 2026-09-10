@@ -30,7 +30,18 @@
   <span class="badge">Ano em aberto</span>
   {% endif %}
 </h1>
-<p class="page-sub">Exercício {{ report.exercise }} · Ano-Calendário {{ report.year }} · Lei 14.754/2023</p>
+<p class="page-sub">Exercício {{ report.exercise }} · Ano-Calendário {{ report.year }} · Lei 14.754/2023
+  {% if report.dirpf.status == "HOMOLOGADO" %}
+  <span class="badge ok">Schema {{ report.dirpf.schema_version }} — HOMOLOGADO</span>
+  {% else %}
+  <span class="badge" style="background:#fef3c7;color:#92400e">Schema {{ report.dirpf.schema_version }} — PRELIMINAR</span>
+  {% endif %}
+</p>
+{% if report.dirpf.aviso %}
+<div class="card" role="alert" style="border-left:4px solid #b45309">
+  <strong>Relatório PRELIMINAR:</strong> {{ report.dirpf.aviso }}
+</div>
+{% endif %}
 {% if not report.closing.prev_closed %}
 <div class="card" role="alert" style="border-left:4px solid #b45309">
   <strong>Atenção:</strong> o ano-calendário {{ report.year|add:"-1" }} não está fechado. O saldo de

@@ -30,19 +30,32 @@ class ReportService:
 
     def _dirpf_schema(self) -> dict:
         """RF-ARQ-002/003: códigos por exercício com trava de homologação.
-        Sem cadastro → defaults estáticos (homologado por definição)."""
+        Auditoria-fiscal 11: sem schema configurado o relatório NÃO se
+        autodenomina homologado — defaults estáticos viram PRELIMINAR
+        (com aviso). HOMOLOGADO só com schema explicitamente homologado.
+        A apuração matemática continua funcionando sem schema."""
         from fiscal.models import DirpfSchema
         schema = DirpfSchema.objects.filter(filing_year=self.year).first()
         if schema is None:
             return {
                 "groups": GRUPO_CODIGO, "countries": COUNTRY_RFB,
-                "schema_version": "default", "status": "HOMOLOGADO",
+                "schema_version": "default", "status": "PRELIMINAR",
+                "aviso": (
+                    "Nenhum schema de códigos DIRPF cadastrado para o "
+                    f"exercício {self.year + 1}: o relatório usa defaults "
+                    "estáticos e é PRELIMINAR. Cadastre e homologue o schema "
+                    "em DirpfSchema para o status HOMOLOGADO."
+                ),
             }
         return {
             "groups": {**GRUPO_CODIGO, **(schema.groups or {})},
             "countries": {**COUNTRY_RFB, **(schema.countries or {})},
             "schema_version": schema.schema_version,
             "status": "HOMOLOGADO" if schema.is_homologated else "PRELIMINAR",
+            "aviso": "" if schema.is_homologated else (
+                f"Schema {schema.schema_version} não homologado — relatório "
+                "PRELIMINAR."
+            ),
         }
 
     def build(self) -> dict:
@@ -193,6 +206,7 @@ class ReportService:
             "dirpf": {
                 "schema_version": dirpf["schema_version"],
                 "status": dirpf["status"],
+                "aviso": dirpf.get("aviso", ""),
             },
             "closing": {
                 "is_closed": snapshot is not None,

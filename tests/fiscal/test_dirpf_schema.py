@@ -45,10 +45,18 @@ def test_schema_por_exercicio_pode_ser_cadastrado(db):
     assert DirpfSchema.objects.get(filing_year=2026) == schema
 
 
-def test_sem_schema_relatorio_usa_defaults(ambiente):
+def test_sem_schema_relatorio_preliminar_com_aviso(ambiente):
+    """Ticket 11 (auditoria-fiscal): o teste antigo esperava HOMOLOGADO com
+    defaults — substituído porque um relatório sem base versionada não pode
+    se apresentar como definitivo. Sem schema → PRELIMINAR com aviso; a
+    apuração matemática continua funcionando."""
     report = _report(2026)
-    assert report["dirpf"]["status"] == "HOMOLOGADO"
+    assert report["dirpf"]["status"] == "PRELIMINAR"
     assert report["dirpf"]["schema_version"] == "default"
+    assert "PRELIMINAR" in report["dirpf"]["aviso"]
+    # apuração matemática segue funcionando sem schema
+    assert report["income"] is not None
+    assert "assets" in report
 
 
 def test_schema_nao_homologado_marca_relatorio_preliminar(ambiente):
