@@ -11,7 +11,7 @@ propósito fiscal bloqueia com orientação clara.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (commit f01a0c5)
 
 - [ ] Serviço central de participação do titular, usado por dividendos, juros, ganhos, perdas e crédito (teste que falha no código atual)
 - [ ] Teste obrigatório: conta 50%, dividendo bruto R$ 10.000 → base atribuída R$ 5.000, IR R$ 750 (não R$ 1.500)

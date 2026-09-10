@@ -6,9 +6,10 @@ operação é registrada em LossCompensation (idempotente por reexecução).
 """
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from fiscal.models import LossCompensation, LossRecord
+from fiscal.models import AnnualAssessment, LossCompensation, LossRecord
 
 ZERO = Decimal("0.00")
 
@@ -52,12 +53,32 @@ class LossLedgerService:
 
     @classmethod
     def apply_compensation(cls, year: int, income_brl: Decimal) -> Decimal:
-        """Consome os saldos FIFO até o rendimento do ano (idempotente)."""
+        """Consome os saldos FIFO até o rendimento do ano (idempotente).
+
+        Auditoria-fiscal 09: refechar um ano NÃO pode corromper o saldo —
+        antes de recalcular, cada compensação existente do ano é DEVOLVIDA
+        ao registro de origem (em transação atômica, com bloqueio
+        concorrente nos registros). Recalcular um ano anterior com ano
+        posterior já fechado é bloqueado: nunca alterar história fechada
+        invisivelmente (reabertura em cascata fica explícita para o usuário)."""
+        if AnnualAssessment.objects.filter(year__gt=year).exists():
+            raise ValidationError(
+                f"Não é possível recalcular a compensação de {year}: existe "
+                f"fechamento posterior consolidado. Reabra os anos em cascata "
+                "explicitamente antes de recalcular."
+            )
         restante = max(income_brl, ZERO)
         with transaction.atomic():
-            LossCompensation.objects.filter(year=year).delete()
+            # 1) devolve cada compensação do ano ao saldo de origem
+            for comp in LossCompensation.objects.filter(year=year).select_related("record"):
+                record = LossRecord.objects.select_for_update().get(pk=comp.record_id)
+                record.remaining_brl = (record.remaining_brl + comp.amount_brl).quantize(Decimal("0.01"))
+                record.save(update_fields=["remaining_brl"])
+                comp.delete()
+            # 2) recalcula FIFO com bloqueio concorrente
             compensado = ZERO
-            for record in cls.open_records(year):
+            for aberto in cls.open_records(year):
+                record = LossRecord.objects.select_for_update().get(pk=aberto.pk)
                 if restante <= 0:
                     break
                 uso = min(record.remaining_brl, restante)
