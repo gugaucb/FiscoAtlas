@@ -11,6 +11,7 @@ from fiscal.models import AnnualAssessment, Profile
 from fx.service import PtaxService
 from ledger.cash import INFLOWS, CashLedgerService
 from ledger.models import Asset, BrokerAccount, FinancialEvent
+from ledger.ownership import OwnershipService
 from ledger.position import PositionService
 
 # Códigos da ficha Bens e Direitos (DIRPF) — a confirmar com contador
@@ -65,7 +66,9 @@ class ReportService:
                 "balance_usd": balance_usd,
                 "balance_brl": cash_brl,
             })
-            acc["cash_brl"] = cash_brl
+            # auditoria-fiscal 06: caixa atribuível também passa pela fatia
+            # do contribuinte (mesma fonte de verdade)
+            acc["cash_brl"] = (cash_brl * OwnershipService.taxpayer_share_factor(account)).quantize(Decimal("0.01"))
             if not account.is_interest_bearing:
                 # Variação cambial de caixa não remunerado é isenta
                 # (IN RFB 2180/2024, art. 3º): saldo a PTAX 31/12 − custo BRL
@@ -114,6 +117,13 @@ class ReportService:
                             gains_brl += r["gain_brl"]
                         else:
                             losses_brl += -r["gain_brl"]
+                # auditoria-fiscal 06: MESMA fonte de verdade que o engine —
+                # os fatos exibidos já são atribuídos ao contribuinte
+                fator = OwnershipService.taxpayer_share_factor(account)
+                dividends_brl *= fator
+                withholding_brl *= fator
+                gains_brl *= fator
+                losses_brl *= fator
                 acc["income_brl"] += (dividends_brl + gains_brl - losses_brl).quantize(Decimal("0.01"))
                 acc["custody_brl"] += pos["cost_brl_total"]
                 if pos["quantity"]:
@@ -159,18 +169,19 @@ class ReportService:
         profile = Profile.objects.first()
         snapshot = AnnualAssessment.objects.filter(year=self.year).first()
         prev_snapshot = AnnualAssessment.objects.filter(year=self.year - 1).first()
-        # RF-PER-004: demonstração da fatia proporcional do contribuinte
+        # RF-PER-004: demonstração da fatia do contribuinte. Auditoria-fiscal
+        # 06: a atribuição já foi aplicada no cálculo (OwnershipService) —
+        # aqui é só exibição, sem re-dividir (nada de dupla atribuição).
         ownership_attribution = []
         for account in BrokerAccount.objects.filter(active=True):
-            share = account.ownership_share
             acc = attrib.get(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0), "cash_brl": Decimal(0)})
             ownership_attribution.append({
                 "account": account,
                 "ownership_type": account.ownership_type,
-                "share_pct": share,
-                "income_brl_attrib": (acc["income_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
-                "custody_brl_attrib": (acc["custody_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
-                "cash_brl_attrib": (acc.get("cash_brl", Decimal(0)) * share / Decimal(100)).quantize(Decimal("0.01")),
+                "share_pct": account.ownership_share,
+                "income_brl_attrib": acc["income_brl"].quantize(Decimal("0.01")),
+                "custody_brl_attrib": acc["custody_brl"].quantize(Decimal("0.01")),
+                "cash_brl_attrib": acc.get("cash_brl", Decimal(0)).quantize(Decimal("0.01")),
             })
         return {
             "ownership_attribution": ownership_attribution,

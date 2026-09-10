@@ -8,6 +8,7 @@ from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
 from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent
+from ledger.ownership import OwnershipService
 from ledger.position import PositionService
 
 ZERO = Decimal("0.00")
@@ -140,7 +141,7 @@ class TaxEngine:
             refund_of__isnull=False,
         ).select_related("refund_of")
         for refund in refunds:
-            refund_brl = refund.amount_usd * (refund.fx_rate or ZERO)
+            refund_brl = refund.amount_usd * (refund.fx_rate or ZERO) * OwnershipService.taxpayer_share_factor(refund.refund_of.account)
             refunds_por_origem[refund.refund_of_id] = (
                 refunds_por_origem.get(refund.refund_of_id, ZERO) + refund_brl
             )
@@ -155,11 +156,15 @@ class TaxEngine:
             })
         for ev in events:
             fx = ev.fx_rate or ZERO
+            # RF-PER-003 / auditoria-fiscal 06: a titularidade entra no
+            # CÁLCULO (não só na exibição) — fatos fiscais da conta são
+            # atribuídos ao contribuinte pela fatia dele.
+            fator = OwnershipService.taxpayer_share_factor(ev.account)
             if ev.event_type in ("SELL", "CASH_IN_LIEU"):
                 r = realized_idx.get(ev.id)
                 if r is None:
                     continue
-                gain_brl = r["gain_brl"]
+                gain_brl = (r["gain_brl"] * fator).quantize(Decimal("0.01"))
                 gross_brl = gain_brl if gain_brl > 0 else ZERO
                 if gain_brl < 0:
                     loss += -gain_brl
@@ -179,16 +184,17 @@ class TaxEngine:
                 # Auditoria-fiscal 04: gross = rendimento líquido + soma de
                 # TODOS os pagamentos de imposto do evento (0..N).
                 gross_usd = ev.amount_usd + sum((p.tax_usd for p in pagamentos_ev), ZERO)
-                gross_brl = (gross_usd * fx).quantize(Decimal("0.01"))
+                gross_brl = (gross_usd * fx * fator).quantize(Decimal("0.01"))
                 income += gross_brl
                 # imposto pago no exterior: PTAX COMPRA na data de CADA pagamento
+                # (retido na parcela do contribuinte — titularidade)
                 eligible_wh = ZERO
                 ineligible_wh = ZERO
                 fx_tax_last = fx
                 tax_date_last = ev.trade_date
                 for pagamento in pagamentos_ev:
                     fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
-                    wh = (pagamento.tax_usd * fx_tax).quantize(Decimal("0.01"))
+                    wh = (pagamento.tax_usd * fx_tax * fator).quantize(Decimal("0.01"))
                     fx_tax_last = fx_tax
                     tax_date_last = pagamento.foreign_tax_payment_date
                     # elegibilidade (RF-FTC-002/003): por pagamento — só tributo

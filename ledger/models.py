@@ -76,8 +76,10 @@ class BrokerAccount(models.Model):
     active = models.BooleanField(default=True)
 
     def clean(self):
-        if not (Decimal("0.01") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
-            raise ValidationError("ownership_share deve estar entre 0,01 e 100,00.")
+        # auditoria-fiscal 06: 0% é permitido como decisão EXPLÍCITA do
+        # usuário (conta de terceiros) — nunca como default silencioso.
+        if not (Decimal("0.00") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
+            raise ValidationError("ownership_share deve estar entre 0,00 e 100,00.")
 
     def __str__(self):
         return self.name or f"{self.broker_name} ({self.account_number})"

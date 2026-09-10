@@ -9,7 +9,7 @@ relatórios e memórias passam a somar todos os pagamentos por evento.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (commit fb27c20)
 
 - [ ] Engine, relatório, memória de cálculo e serviços usam somente `ForeignTaxPayment` (com teste que falha no código atual)
 - [ ] Evento com 2+ pagamentos de imposto: todos aparecem e entram no cálculo do crédito (teste explícito)
