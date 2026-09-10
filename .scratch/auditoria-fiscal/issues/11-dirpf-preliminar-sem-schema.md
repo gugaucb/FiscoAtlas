@@ -9,7 +9,7 @@ continua permitida sem schema — o que muda é o rótulo e a confiança.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Sem schema → status PRELIMINAR com aviso (falha no código atual, que retorna HOMOLOGADO)
 - [ ] HOMOLOGADO somente com schema explicitamente homologado
