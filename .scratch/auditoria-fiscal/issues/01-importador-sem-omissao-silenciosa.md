@@ -11,11 +11,11 @@ concluir a importação sem reconhecer as pendências.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (branch feat/auditoria-fiscal, commit ef59c72)
 
-- [ ] SELL é mapeado e importado como evento de venda (com teste de regressão que falha no código atual)
-- [ ] Linha com ação não suportada aparece na prévia como pendência bloqueante (linha, ação bruta, motivo) — nunca é descartada sem rastro
-- [ ] ImportBatch registra contagem conciliada: linhas do arquivo = importadas + pendências + ignoradas confirmadas
-- [ ] Prévia da importação exibe pendências ao usuário e exige reconhecimento explícito para concluir
-- [ ] Teste adversarial: CSV com SELL + Transfer + evento desconhecido — nada desaparece; valores esperados explícitos
-- [ ] Princípio da regra de ouro respeitado (ver README do tracker)
+- [x] SELL é mapeado e importado como evento de venda (com teste de regressão que falha no código atual)
+- [x] Linha com ação não suportada aparece na prévia como pendência bloqueante (linha, ação bruta, motivo) — nunca é descartada sem rastro
+- [x] ImportBatch registra contagem conciliada: linhas do arquivo = importadas + pendências + ignoradas confirmadas
+- [x] Prévia da importação exibe pendências ao usuário e exige reconhecimento explícito para concluir
+- [x] Teste adversarial: CSV com SELL + Transfer + evento desconhecido — nada desaparece; valores esperados explícitos
+- [x] Princípio da regra de ouro respeitado (ver README do tracker)

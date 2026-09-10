@@ -3,8 +3,9 @@
 Saldo devedor da apuração anual → orientação formal de pagamento:
 cota única com vencimento no último dia útil de abril do exercício ou
 parcelamento em até 8 quotas com juros Selic a partir da 2ª quota.
-Imposto devido < R$ 10,00 → dispensa legal de emissão do DARF
-(art. 872, RIR/2018 — Decreto 9.580/2018).
+Imposto devido < R$ 10,00 → vedada a emissão do DARF e o valor é adicionado
+ao imposto do mesmo código dos períodos subsequentes
+(art. 938, §§ 4º e 5º, RIR/2018 — Decreto 9.580/2018).
 """
 from calendar import monthrange
 from datetime import date, timedelta
@@ -42,9 +43,10 @@ class DarfGuideService:
             guia.update({
                 "dispensado": True,
                 "mensagem": (
-                    "Imposto devido inferior a R$ 10,00: a emissão do DARF é "
-                    "dispensada legalmente (art. 872, RIR/2018). O valor será "
-                    "acumulado no ajuste anual."
+                    "Imposto devido inferior a R$ 10,00: é vedada a emissão do "
+                    "DARF (art. 938, § 4º, RIR/2018) e o valor é adicionado ao "
+                    "imposto do mesmo código dos períodos subsequentes "
+                    "(art. 938, § 5º, RIR/2018), até atingir R$ 10,00."
                 ),
                 "cota_unica": {"valor": tax_due},
                 "parcelamento": None,

@@ -1,6 +1,6 @@
 """Ticket 07 (roadmap-compliance) — CBE / Banco Central (RF-CBE-001..007).
 
-Res. BCB nº 278/2022: residente com capitais no exterior ≥ US$ 1.000.000 em
+Res. BCB nº 279/2022: residente com capitais no exterior ≥ US$ 1.000.000 em
 31/12 deve entregar CBE anual; ≥ US$ 100.000.000, obrigação trimestral.
 Abaixo do limite: CBE_UNDETERMINED salvo declaração formal de completude.
 """

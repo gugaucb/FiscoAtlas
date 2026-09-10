@@ -74,7 +74,7 @@
   <p>
     Capitais no exterior: US$ {{ report.cbe.total_usd }} —
     {% if report.cbe.status == "CBE_REQUIRED" %}
-      <strong>declaração obrigatória{% if report.cbe.quarterly %} trimestral (≥ US$ 100.000.000){% else %} anual (Res. BCB 278/2022){% endif %}</strong>.
+      <strong>declaração obrigatória{% if report.cbe.quarterly %} trimestral (≥ US$ 100.000.000){% else %} anual (Res. BCB nº 279/2022){% endif %}</strong>.
     {% elif report.cbe.status == "CBE_NOT_REQUIRED" %}
       não obrigatória (completude patrimonial declarada).
     {% else %}

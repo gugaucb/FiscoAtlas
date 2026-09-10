@@ -1,6 +1,7 @@
 """CBE — Declaração de Capitais Brasileiros no Exterior (RF-CBE-001..007).
 
-Resolução BCB nº 278/2022: capitais ≥ US$ 1.000.000,00 na data-base 31/12
+Resolução BCB nº 279/2022 (que regulamenta a Lei nº 14.286/2021): capitais
+≥ US$ 1.000.000,00 na data-base 31/12
 exigem CBE anual; ≥ US$ 100.000.000,00, declaração trimestral. Abaixo do
 limite o status é indeterminado (a plataforma não enxerga bens fora dela),
 salvo declaração formal de completude patrimonial do contribuinte.

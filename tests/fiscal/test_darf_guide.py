@@ -3,8 +3,8 @@
 RF-DARF-001/005, CT-029: saldo devedor da apuração anual gera orientação
 formal (código 0211 — IRPF Ajuste Anual), cota única com vencimento no
 último dia útil de abril e simulação de parcelamento em até 8 quotas com
-juros Selic. Imposto devido < R$ 10,00 → dispensa legal de emissão
-(art. 872, RIR/2018).
+juros Selic. Imposto devido < R$ 10,00 → vedada a emissão e valor
+adicionado ao imposto dos períodos subsequentes (art. 938, §§ 4º e 5º, RIR/2018).
 """
 from datetime import date
 from decimal import Decimal
@@ -52,7 +52,12 @@ def test_imposto_menor_que_dez_reais_dispensa(regra):
     with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
         guia = DarfGuideService(2026).build(tax_due_brl=Decimal("9.99"))
     assert guia["dispensado"] is True
-    assert "dispensada" in guia["mensagem"].lower()
+    # Auditoria-fiscal 02: o teste anterior assertava a mensagem "dispensada
+    # legalmente (art. 872)" — referência legal errada. O correto é vedação de
+    # emissão + acúmulo nos períodos subsequentes (art. 938, §§ 4º e 5º, RIR/2018).
+    assert "art. 938, § 4º" in guia["mensagem"]
+    assert "art. 938, § 5º" in guia["mensagem"]
+    assert "872" not in guia["mensagem"]
 
 
 def test_imposto_zero_gera_dispensa(regra):

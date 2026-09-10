@@ -902,9 +902,9 @@ Para minimizar surpresas, antes de clicar em **Fechar ano** confirme:
 | Lei nº 14.754/2023 | Tributação de aplicações financeiras no exterior |
 | IN RFB nº 2.180/2024 | Regulamentação da Lei 14.754/2023 |
 | Lei nº 15.270/2025 | Tributação mínima de altas rendas |
-| Resolução BCB nº 278/2022 | CBE — Capitais Brasileiros no Exterior |
+| Resolução BCB nº 279/2022 | CBE — Capitais Brasileiros no Exterior |
 | Decreto nº 9.580/2018 (RIR) | Regulamento do Imposto de Renda |
-| Art. 872, RIR/2018 | Dispensa de DARF < R$ 10,00 |
+| Art. 938, §§ 4º e 5º, RIR/2018 | Vedação de DARF < R$ 10,00 e acúmulo nos períodos subsequentes |
 
 ---
 
