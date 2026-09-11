@@ -106,11 +106,18 @@ class TaxEngine:
         self._bloquear_ativos_nao_cobertos()
         rule = TaxRule.objects.for_year(self.year)
         rate = Decimal(rule.brackets[-1]["rate"])
+        # Auditoria-fiscal 10: o ano fiscal difere por componente —
+        # ganhos de alienação: data da operação (trade_date é o fato gerador
+        # correto no IRPF); rendimentos: data de RECEBIMENTO. Sem fallback
+        # silencioso: rendimento sem income_receipt_date (legado) bloqueia.
+        gain_q = Q(event_type__in=("SELL", "CASH_IN_LIEU"), trade_date__year=self.year)
+        income_q = Q(event_type__in=("DIVIDEND", "JUROS")) & (
+            Q(income_receipt_date__year=self.year)
+            | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
+        )
         events = list(
-            FinancialEvent.objects.filter(
-                active=True, trade_date__year=self.year,
-                event_type__in=("DIVIDEND", "JUROS", "SELL", "CASH_IN_LIEU"),
-            ).select_related("asset").order_by("trade_date", "id")
+            FinancialEvent.objects.filter(gain_q | income_q, active=True)
+            .select_related("asset").order_by("trade_date", "id")
         )
 
         realized_idx = {}
@@ -175,6 +182,16 @@ class TaxEngine:
                     "withholding_brl": ZERO, "credit_used": ZERO,
                 })
             else:  # DIVIDEND, JUROS
+                if ev.income_receipt_date is None:
+                    raise ValidationError(
+                        f"Rendimento {ev} (id {ev.id}) sem data de recebimento "
+                        "registrada — dados legados precisam de income_receipt_date "
+                        "antes da apuração (sem fallback silencioso para a data da operação)."
+                    )
+                # Auditoria-fiscal 10: fx do evento é a PTAX VENDA da data de
+                # RECEBIMENTO (resolvida no capture pela data fiscal — ver
+                # EventService.record); o resolver valida a data existente.
+                TaxDateResolver().resolve(event=ev, date_rule="INCOME_RECEIPT_DATE")
                 pagamentos_ev = pagamentos.get(ev.id, [])
                 # Auditoria-fiscal 04: gross = rendimento líquido + soma de
                 # TODOS os pagamentos de imposto do evento (0..N).

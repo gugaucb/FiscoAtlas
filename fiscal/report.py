@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from fiscal.cbe import CbeService
 from fiscal.darf import DarfGuideService
@@ -106,7 +106,10 @@ class ReportService:
                 # a atribuição proporcional mesmo sem posição remanescente
                 div_events = FinancialEvent.objects.filter(
                     account=account, asset=asset, active=True,
-                    event_type__in=("DIVIDEND", "JUROS"), trade_date__year=self.year,
+                    event_type__in=("DIVIDEND", "JUROS"),
+                ).filter(
+                    Q(income_receipt_date__year=self.year)
+                    | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
                 ).prefetch_related("foreign_tax_payments")
                 dividends_brl = Decimal(0)
                 withholding_brl = Decimal(0)

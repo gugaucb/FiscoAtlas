@@ -48,6 +48,12 @@ class EventForm(forms.ModelForm):
         label="Motivo da PTAX manual",
         help_text="Ex.: API do BCB indisponível em 31/12/2026.",
     )
+    income_receipt_date = forms.DateField(
+        required=False, widget=forms.DateInput(attrs={"type": "date"}),
+        label="Data de recebimento do rendimento",
+        help_text="Fato gerador do rendimento (auditoria-fiscal 10) — pode "
+                  "diferir da data da operação. Vazio = recebido na data da operação.",
+    )
     foreign_tax_payment_date = forms.DateField(
         required=False, widget=forms.DateInput(attrs={"type": "date"}),
         label="Data de pagamento do imposto no exterior",
@@ -76,7 +82,8 @@ class EventForm(forms.ModelForm):
 
     class Meta:
         model = FinancialEvent
-        fields = ["event_type", "account", "trade_date", "quantity",
+        fields = ["event_type", "account", "trade_date", "income_receipt_date",
+                  "quantity",
                   "price_usd", "fee_usd", "amount_usd",
                   "split_ratio_from", "split_ratio_to", "notes"]
         labels = {"event_type": LABELS["event_type"], "account": LABELS["account"],

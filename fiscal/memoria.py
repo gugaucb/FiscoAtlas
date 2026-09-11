@@ -2,6 +2,8 @@ import io
 
 from decimal import Decimal
 
+from django.db.models import Q
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
@@ -36,9 +38,14 @@ def _memoria_conta_ativo(year: int, account, asset) -> dict:
         FinancialEvent.objects.filter(
             account=account, asset=asset, active=True,
             event_type__in=("BUY", "SELL", "DIVIDEND"),
-            trade_date__year=year,
+        ).filter(
+            Q(event_type__in=("BUY", "SELL"), trade_date__year=year)
+            | Q(event_type="DIVIDEND", income_receipt_date__year=year)
+            | Q(event_type="DIVIDEND", income_receipt_date__isnull=True, trade_date__year=year)
         ).order_by("trade_date", "id")
     )
+    # Auditoria-fiscal 10: dividendo exibido no ano do RECEBIMENTO (o motor
+    # apura pelo mesmo critério); sem filtro, somaria no ano da operação.
     op = OpeningPosition.objects.filter(account=account, asset=asset).first()
     rows = []
     qty = Decimal(0)

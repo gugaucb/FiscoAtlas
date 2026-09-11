@@ -91,6 +91,10 @@ class FinancialEvent(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT, null=True, blank=True, related_name="events")
     trade_date = models.DateField()
     settle_date = models.DateField(null=True, blank=True)
+    # Auditoria-fiscal 10: fato gerador do RENDIMENTO é o recebimento efetivo
+    # (ex.: dividendo negociado 31/12 creditado 02/01 pertence ao ano do
+    # recebimento). Ganhos de alienação continuam pela trade_date.
+    income_receipt_date = models.DateField(null=True, blank=True)
     quantity = models.DecimalField(max_digits=24, decimal_places=10, null=True, blank=True)
     price_usd = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     fee_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)

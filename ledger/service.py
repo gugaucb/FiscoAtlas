@@ -19,10 +19,10 @@ FOREIGN_TAX_FIELDS = (
 
 
 def resolve_current_event_base_date(data: dict) -> date:
-    """Data base do evento para componentes do rendimento (compatibilidade do
-    modelo atual: único campo de data é trade_date). Quando o TaxDateResolver
-    existir (ticket 02), esta resolução passa a ser guiada por TaxRule.date_rule."""
-    return data["trade_date"]
+    """Data base do evento para componentes do rendimento (auditoria-fiscal
+    10: preferência pela data de recebimento informada; a data da operação
+    só vale quando o recebimento coincide — default explícito do capture)."""
+    return data.get("income_receipt_date") or data["trade_date"]
 
 
 class EventService:
@@ -84,12 +84,18 @@ class EventService:
 
         manual_rate = data.pop("ptax_manual", None)
         manual_reason = data.pop("ptax_reason", None)
+        # Auditoria-fiscal 10: fato gerador do rendimento é o RECEBIMENTO.
+        # Default explícito no capture (crédito no mesmo dia da operação) —
+        # o resolver nunca presume trade_date silenciosamente.
+        if etype in ("DIVIDEND", "JUROS"):
+            data["income_receipt_date"] = data.get("income_receipt_date") or data["trade_date"]
+        ptax_date = data.get("income_receipt_date") or data["trade_date"]
         if manual_rate:
             rate = self.ptax.override(
-                data["trade_date"], Decimal(str(manual_rate)), manual_reason or ""
+                ptax_date, Decimal(str(manual_rate)), manual_reason or ""
             ).rate
         else:
-            rate = self._ptax_rate(data["trade_date"])
+            rate = self._ptax_rate(ptax_date)
         if data.get("corrects"):
             data["corrects"].active = False
             data["corrects"].save()
