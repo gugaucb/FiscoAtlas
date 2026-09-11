@@ -1,0 +1,39 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Saldos documentais da corretora</h1>
+<p class="page-sub">A reconciliação anual confronta o caixa do ledger e as
+  posições calculadas com o extrato documentado e CONFIRMADO na data-base
+  (31/12). Divergência ou ausência vira pendência e bloqueia o fechamento.</p>
+<div class="card">
+  <h2>Registrar saldo documental</h2>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="note">{{ field.help_text }}</p>{% endif %}
+      {% if field.errors %}<div class="errors">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn">Registrar saldo</button>
+  </form>
+</div>
+<h2>Saldos registrados</h2>
+<table>
+  <thead>
+  <tr><th>Data-base</th><th>Conta</th><th>Caixa (USD)</th><th>Posições</th><th>Confirmado</th></tr>
+  </thead>
+  <tbody>
+  {% for b in balances %}
+  <tr><td class="num">{{ b.reference_date|date:"d/m/Y" }}</td>
+      <td>{{ b.account }}</td>
+      <td class="money">US$ {{ b.cash_usd }}</td>
+      <td>{% for p in b.positions %}{{ p.ticker }}: {{ p.quantity }}{% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</td>
+      <td>{% if b.confirmed %}<span class="badge ok">confirmado</span>{% else %}<span class="badge">pendente</span>{% endif %}</td></tr>
+  {% empty %}
+  <tr><td colspan="5" class="empty">Nenhum saldo registrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

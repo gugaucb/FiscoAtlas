@@ -230,8 +230,16 @@ def test_close_year_view_bloqueado(ambiente, client):
 
 
 def test_close_year_view_ok(ambiente, client):
+    """Auditoria-fiscal 12: o fechamento agora exige reconciliação ANTES da
+    validação fiscal — saldo documental confirmado confrontando o ledger."""
     conta = ambiente
     _compra(conta)
+    from ledger.models import DocumentedBalance
+    DocumentedBalance.objects.create(
+        account=conta, reference_date=date(2026, 12, 31),
+        cash_usd=Decimal("-1000.00"), positions=[{"ticker": "AAPL", "quantity": "10"}],
+        confirmed=True,
+    )
     with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
         resp = client.post("/apuracao/2026/fechar/")
     assert resp.status_code == 302

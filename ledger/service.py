@@ -104,6 +104,14 @@ class EventService:
         pagamento = self._dados_imposto_exterior(data, tax)
         fields = {k: v for k, v in data.items() if k not in ("amount_usd", "corrects", "per_share_usd", "tax_usd", *FOREIGN_TAX_FIELDS)}
         fields["fee_usd"] = fields.get("fee_usd") or Decimal(0)
+        # Auditoria-fiscal 12: estado declarado do imposto exterior —
+        # com pagamento registrado é RECORDED; senão, só o que o usuário
+        # DECLARAR (NO_WITHHOLDING / REVIEW_PENDING) ou UNDECLARED (que
+        # bloqueia a reconciliação — nunca retenção zero presumida).
+        if etype in ("DIVIDEND", "JUROS"):
+            fields["foreign_tax_state"] = (
+                "RECORDED" if pagamento else (data.get("foreign_tax_state") or "UNDECLARED")
+            )
         with transaction.atomic():
             evento = FinancialEvent.objects.create(
                 **fields,

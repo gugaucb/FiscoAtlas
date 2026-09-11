@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import django.forms as forms
-from ledger.models import DATE_EVIDENCE_SOURCES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
+from ledger.models import DATE_EVIDENCE_SOURCES, FOREIGN_TAX_STATES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
 from ledger.foreign_tax_forms import ForeignTaxPaymentForm  # noqa: F401 (API única de formulários)
 
 LABELS = {
@@ -53,6 +53,12 @@ class EventForm(forms.ModelForm):
         label="Data de recebimento do rendimento",
         help_text="Fato gerador do rendimento (auditoria-fiscal 10) — pode "
                   "diferir da data da operação. Vazio = recebido na data da operação.",
+    )
+    foreign_tax_state = forms.ChoiceField(
+        required=False, choices=[("", "—")] + FOREIGN_TAX_STATES,
+        label="Estado do imposto no exterior",
+        help_text="Obrigatório para rendimentos sem retenção registrada: declare "
+                  "'Sem retenção' explicitamente (não presumimos retenção zero).",
     )
     foreign_tax_payment_date = forms.DateField(
         required=False, widget=forms.DateInput(attrs={"type": "date"}),

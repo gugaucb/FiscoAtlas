@@ -85,6 +85,14 @@ class BrokerAccount(models.Model):
         return self.name or f"{self.broker_name} ({self.account_number})"
 
 
+FOREIGN_TAX_STATES = [
+    ("UNDECLARED", "Não declarado"),
+    ("NO_WITHHOLDING", "Sem retenção no exterior (declarado pelo contribuinte)"),
+    ("RECORDED", "Registrado em ForeignTaxPayment"),
+    ("REVIEW_PENDING", "Pendente de revisão documental"),
+]
+
+
 class FinancialEvent(models.Model):
     event_type = models.CharField(max_length=32, choices=EVENT_TYPES)
     account = models.ForeignKey(BrokerAccount, on_delete=models.PROTECT, related_name="events")
@@ -95,6 +103,12 @@ class FinancialEvent(models.Model):
     # (ex.: dividendo negociado 31/12 creditado 02/01 pertence ao ano do
     # recebimento). Ganhos de alienação continuam pela trade_date.
     income_receipt_date = models.DateField(null=True, blank=True)
+    # Auditoria-fiscal 12: estado declarado do imposto exterior do rendimento
+    # — "sem imposto" não é retenção zero presumida; exige declaração
+    # explícita (NO_WITHHOLDING) ou fica pendente de reconciliação.
+    foreign_tax_state = models.CharField(
+        max_length=16, choices=FOREIGN_TAX_STATES, default="UNDECLARED",
+    )
     quantity = models.DecimalField(max_digits=24, decimal_places=10, null=True, blank=True)
     price_usd = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     fee_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -216,6 +230,33 @@ class OpeningPosition(models.Model):
     @property
     def average_cost_brl(self):
         return self.total_cost_brl / self.quantity if self.quantity else Decimal(0)
+
+
+class DocumentedBalance(models.Model):
+    """Auditoria-fiscal 12: saldo documental da corretora na data-base.
+
+    A reconciliação anual confronta o saldo do ledger e as posições
+    calculadas com os saldos documentados (extrato) — divergência ou
+    ausência vira pendência, nunca passagem automática."""
+
+    account = models.ForeignKey(BrokerAccount, on_delete=models.PROTECT, related_name="documented_balances")
+    reference_date = models.DateField()
+    cash_usd = models.DecimalField(max_digits=20, decimal_places=2)
+    # posições documentadas em 31/12: [{"ticker": ..., "quantity": ...}]
+    positions = models.JSONField(default=list)
+    confirmed = models.BooleanField(default=False)
+    source_document_id = models.CharField(max_length=128, blank=True)
+    source_reference = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["account", "reference_date"], name="uniq_documented_balance",
+        )]
+
+    def __str__(self):
+        return f"{self.account} @ {self.reference_date} caixa US$ {self.cash_usd}"
 
 
 class ImportBatch(models.Model):
