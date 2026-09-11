@@ -18,6 +18,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
+from fiscal.date_rules import income_fiscal_year_q
 from ledger.cash import CashLedgerService
 from ledger.models import Asset, BrokerAccount, DocumentedBalance, FinancialEvent, ImportIssue
 from ledger.position import PositionService
@@ -119,8 +120,7 @@ class AnnualReconciliationService:
     # ------------------------------------------------------------ (4) imposto exterior
     def _checar_estado_imposto_exterior(self):
         rendimentos = FinancialEvent.objects.filter(
-            active=True, event_type__in=("DIVIDEND", "JUROS"),
-            income_receipt_date__year=self.year,
+            income_fiscal_year_q(self.year), active=True,
         ).select_related("account")
         for ev in rendimentos:
             if ev.foreign_tax_state == "UNDECLARED":

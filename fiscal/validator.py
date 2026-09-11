@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
+from fiscal.date_rules import fiscal_year_q
 from fiscal.models import AnnualAssessment, Profile
 from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
@@ -42,9 +43,8 @@ class AnnualClosingValidator:
 
     # ------------------------------------------------------------ RF-VAL-002
     def _checar_ativos_unknown(self):
-        qs = Asset.objects.filter(
-            active=True, asset_type="UNKNOWN", events__trade_date__year=self.year,
-            events__active=True,
+        qs = Asset.objects.filter(active=True, asset_type="UNKNOWN").filter(
+            fiscal_year_q(self.year, prefix="events__"), events__active=True,
         ).distinct()
         for asset in qs:
             self.violations.append(
@@ -56,9 +56,9 @@ class AnnualClosingValidator:
     # ------------------------------------------------------------ integridade
     def _checar_integridade_cambial(self):
         nulos = FinancialEvent.objects.filter(
-            active=True, trade_date__year=self.year,
+            fiscal_year_q(self.year), active=True,
         ).filter(amount_brl__isnull=True) | FinancialEvent.objects.filter(
-            active=True, trade_date__year=self.year, fx_rate__isnull=True,
+            fiscal_year_q(self.year), active=True, fx_rate__isnull=True,
         )
         if nulos.exists():
             self.violations.append(
@@ -145,7 +145,8 @@ class AnnualClosingValidator:
         pagamentos = list(
             ForeignTaxPayment.objects.filter(
                 financial_event__active=True,
-                financial_event__trade_date__year=self.year,
+            ).filter(
+                fiscal_year_q(self.year, prefix="financial_event__"),
             ).select_related("financial_event")
         )
         desconhecidos = [p for p in pagamentos if not ForeignTaxCreditService.is_eligible(p)

@@ -5,6 +5,7 @@ from django.db.models import Q, Sum
 
 from fiscal.cbe import CbeService
 from fiscal.darf import DarfGuideService
+from fiscal.date_rules import income_fiscal_year_q
 from fiscal.engine import TaxEngine, fx_imposto_exterior
 from fiscal.high_income import HighIncomeService
 from fiscal.models import AnnualAssessment, Profile
@@ -108,8 +109,7 @@ class ReportService:
                     account=account, asset=asset, active=True,
                     event_type__in=("DIVIDEND", "JUROS"),
                 ).filter(
-                    Q(income_receipt_date__year=self.year)
-                    | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
+                    income_fiscal_year_q(self.year)
                 ).prefetch_related("foreign_tax_payments")
                 dividends_brl = Decimal(0)
                 withholding_brl = Decimal(0)

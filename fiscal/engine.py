@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from fiscal.date_rules import TaxDateResolver
+from fiscal.date_rules import TaxDateResolver, income_fiscal_year_q
 from fiscal.foreign_tax import ForeignTaxCreditService
 from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
@@ -111,10 +111,7 @@ class TaxEngine:
         # correto no IRPF); rendimentos: data de RECEBIMENTO. Sem fallback
         # silencioso: rendimento sem income_receipt_date (legado) bloqueia.
         gain_q = Q(event_type__in=("SELL", "CASH_IN_LIEU"), trade_date__year=self.year)
-        income_q = Q(event_type__in=("DIVIDEND", "JUROS")) & (
-            Q(income_receipt_date__year=self.year)
-            | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
-        )
+        income_q = income_fiscal_year_q(self.year)
         events = list(
             FinancialEvent.objects.filter(gain_q | income_q, active=True)
             .select_related("asset").order_by("trade_date", "id")
