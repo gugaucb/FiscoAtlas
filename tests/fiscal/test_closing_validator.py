@@ -229,6 +229,46 @@ def test_close_year_view_bloqueado(ambiente, client):
     assert not AnnualAssessment.objects.filter(year=2026, confirmed=True).exists()
 
 
+def test_dividendo_recebido_no_ano_seguinte_validado_no_ano_do_recebimento(ambiente):
+    """P0 do auditor (efeito do ticket 10 no validador): o AnnualClosingValidator
+    filtrava por trade_date__year — dividendo negociado 31/12/2026 e recebido
+    02/01/2027 era APURADO em 2027 mas VALIDADO em 2026, escapando das
+    verificações (crédito exterior UNKNOWN, ativo UNKNOWN, integridade cambial)
+    do ano em que o rendimento é tributado."""
+    conta = ambiente
+    ev = _dividendo_com_imposto(conta, tax_usd=Decimal(10))
+    FinancialEvent.objects.filter(pk=ev.pk).update(
+        trade_date=date(2026, 12, 31), income_receipt_date=date(2027, 1, 2),
+    )
+    TaxRule.objects.create(
+        tax_year=2027, rule_version="V2",
+        brackets=[{"limit_brl": None, "rate": "0.15"}],
+        confirmed=True, effective_from=date(2027, 1, 1),
+    )
+    # pagamento com fatos UNKNOWN deve bloquear 2027 (não 2026)
+    pagamento = ev.foreign_tax_payments.get()
+    pagamento.jurisdiction_level = "UNKNOWN"
+    pagamento.save()
+    with pytest.raises(ValidationError, match="(?i)classifique"):
+        AnnualClosingValidator(2027).validate_or_raise()
+    AnnualClosingValidator(2026).validate_or_raise()  # não levanta
+
+
+def test_dividendo_recebido_no_ano_seguinte_ativo_unknown_validado_em_2027(ambiente):
+    """Mesma correção para RF-VAL-002: ativo UNKNOWN movimentado por rendimento
+    recebido em 2027 é exigência de classificação no fechamento de 2027."""
+    conta = ambiente
+    asset = Asset.objects.create(ticker="XYZ", description="?", asset_type="UNKNOWN")
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        EventService().record(dict(
+            event_type="DIVIDEND", account=conta, asset=asset,
+            trade_date=date(2026, 12, 31), quantity=Decimal(1),
+            per_share_usd=Decimal(1), income_receipt_date=date(2027, 1, 2),
+        ))
+    with pytest.raises(ValidationError, match="UNKNOWN"):
+        AnnualClosingValidator(2027).validate_or_raise()
+
+
 def test_close_year_view_ok(ambiente, client):
     """Auditoria-fiscal 12: o fechamento agora exige reconciliação ANTES da
     validação fiscal — saldo documental confirmado confrontando o ledger."""

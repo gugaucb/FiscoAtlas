@@ -7,7 +7,39 @@ pagamento — data própria, nunca presumida a partir do rendimento.
 
 BUY/SELL da operação de mercado NÃO implicam BCB_BUY/BCB_SELL da cotação.
 """
+from django.db.models import Q
+
 from ledger.models import ForeignTaxPayment
+
+
+# Auditor P0: o ANO FISCAL de cada evento depende do tipo — rendimentos
+# (DIVIDEND/JUROS) têm como fato gerador a DATA DE RECEBIMENTO
+# (Lei 14.754/2023; ticket 10); ganhos, custódia e transferências têm a
+# trade_date. Engine, validator e reconciliação usam o MESMO Q — um
+# rendimento negociado em 31/12 e recebido em 02/01 é calculado E validado
+# no ano do recebimento.
+INCOME_EVENT_TYPES = ("DIVIDEND", "JUROS")
+
+
+def income_fiscal_year_q(year: int, prefix: str = "") -> Q:
+    """Q dos rendimentos cujo ano fiscal é `year`. Rendimento legado sem
+    income_receipt_date cai pela trade_date (o capture novo grava sempre o
+    default explícito — o fallback só cobre dados pré-migração)."""
+    p = prefix
+    return Q(**{f"{p}event_type__in": INCOME_EVENT_TYPES}) & (
+        Q(**{f"{p}income_receipt_date__year": year})
+        | Q(**{f"{p}income_receipt_date__isnull": True, f"{p}trade_date__year": year})
+    )
+
+
+def fiscal_year_q(year: int, prefix: str = "") -> Q:
+    """Q de todos os eventos cujo ano fiscal é `year`: rendimentos pela data
+    de recebimento; demais eventos pela trade_date (fato gerador próprio)."""
+    p = prefix
+    non_income = ~Q(**{f"{p}event_type__in": INCOME_EVENT_TYPES}) & Q(
+        **{f"{p}trade_date__year": year}
+    )
+    return non_income | income_fiscal_year_q(year, prefix)
 
 
 # componente → (date_rule, quote_type BCB)

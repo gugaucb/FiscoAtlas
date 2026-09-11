@@ -8,6 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
 
+from fiscal.date_rules import fiscal_year_q
 from fiscal.engine import fx_imposto_exterior
 from fx.service import PtaxService
 from ledger.models import Asset, BrokerAccount, FinancialEvent, OpeningPosition
@@ -39,9 +40,7 @@ def _memoria_conta_ativo(year: int, account, asset) -> dict:
             account=account, asset=asset, active=True,
             event_type__in=("BUY", "SELL", "DIVIDEND"),
         ).filter(
-            Q(event_type__in=("BUY", "SELL"), trade_date__year=year)
-            | Q(event_type="DIVIDEND", income_receipt_date__year=year)
-            | Q(event_type="DIVIDEND", income_receipt_date__isnull=True, trade_date__year=year)
+            fiscal_year_q(year)
         ).order_by("trade_date", "id")
     )
     # Auditoria-fiscal 10: dividendo exibido no ano do RECEBIMENTO (o motor
