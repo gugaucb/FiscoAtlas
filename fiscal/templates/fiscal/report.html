@@ -92,17 +92,36 @@
 {% endif %}
 {% if report.cbe %}
 <div class="card" role="status">
-  <h2>CBE — Banco Central (data-base 31/12)</h2>
+  <h2>CBE — Banco Central (Res. BCB nº 279/2022)</h2>
   <p>
-    Capitais no exterior: US$ {{ report.cbe.total_usd }} —
+    Anual (data-base 31/12): US$ {{ report.cbe.total_usd|default_if_none:"—" }} —
     {% if report.cbe.status == "CBE_REQUIRED" %}
-      <strong>declaração obrigatória{% if report.cbe.quarterly %} trimestral (≥ US$ 100.000.000){% else %} anual (Res. BCB nº 279/2022){% endif %}</strong>.
+      <strong>declaração anual obrigatória (≥ US$ 1.000.000)</strong>.
     {% elif report.cbe.status == "CBE_NOT_REQUIRED" %}
       não obrigatória (completude patrimonial declarada).
+    {% elif report.cbe.annual.missing_valuations %}
+      <strong>indeterminada</strong> — {{ report.cbe.annual.message }}
     {% else %}
       <strong>indeterminada</strong> — a plataforma não enxerga bens fora dela.
       Declare a completude patrimonial no perfil se não houver outros capitais.
     {% endif %}
+  </p>
+  {% if report.cbe.annual.missing_valuations %}
+  <p><strong>Ativos sem valor de mercado confirmado na data-base:</strong>
+    {% for m in report.cbe.annual.missing_valuations %}
+      {{ m.asset.ticker }} em {{ m.account }} ({{ m.quantity }} un.)
+    {% empty %}{% endfor %}
+    — registre o valor em <a href="{% url 'asset-valuation' %}">Valores CBE</a>.
+  </p>
+  {% endif %}
+  <p>
+    Datas-base trimestrais (obrigatória a partir de US$ 100.000.000):
+    {% for t in report.cbe.quarterly_bases %}
+      {{ t.data_base|date:"d/m" }} — US$ {{ t.total_usd|default_if_none:"—" }}
+      {% if t.status == "CBE_REQUIRED" %}<strong>obrigatória</strong>
+      {% elif t.status == "CBE_UNDETERMINED" %}<em>indeterminada</em>
+      {% else %}não obrigatória{% endif %}{% if not forloop.last %};{% endif %}
+    {% endfor %}
   </p>
 </div>
 {% endif %}

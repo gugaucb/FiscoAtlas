@@ -143,6 +143,7 @@
         <a href="{% url 'opening-position' %}" {% if request.resolver_match.url_name == 'opening-position' %}aria-current="page"{% endif %}>Posição abertura</a>
         <a href="{% url 'accounts' %}" {% if request.resolver_match.url_name == 'accounts' or request.resolver_match.url_name == 'account-edit' %}aria-current="page"{% endif %}>Contas</a>
         <a href="/apuracao/2026/">Apuração</a>
+        <a href="{% url 'asset-valuation' %}" {% if request.resolver_match.url_name == 'asset-valuation' %}aria-current="page"{% endif %}>Valores CBE</a>
         <a href="/relatorio/2026/">Relatório</a>
         <a href="{% url 'profile' %}" {% if request.resolver_match.url_name == 'profile' %}aria-current="page"{% endif %}>Perfil</a>
         <a href="{% url 'documents' %}" {% if request.resolver_match.url_name == 'documents' %}aria-current="page"{% endif %}>Documentos</a>

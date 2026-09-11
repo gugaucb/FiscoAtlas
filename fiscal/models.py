@@ -159,3 +159,45 @@ class FilingRule(models.Model):
 
     def __str__(self):
         return f"{self.rule_version} (exercício {self.filing_year})"
+
+
+VALUATION_METHODS = [
+    ("MARKET_CLOSE", "Preço de fechamento na data-base"),
+    ("BROKER_STATEMENT", "Extrato da corretora na data-base"),
+    ("USER_PROVIDED", "Valor informado pelo contribuinte"),
+]
+
+
+class AssetValuation(models.Model):
+    """Ticket 07 (auditoria-fiscal): valor de mercado do ativo na data-base
+    da CBE, informado e confirmado pelo contribuinte — nunca custo médio
+    como proxy patrimonial. Sem valor confirmado na data-base, o item fica
+    UNDETERMINED (sem chute)."""
+
+    account = models.ForeignKey("ledger.BrokerAccount", on_delete=models.PROTECT, related_name="asset_valuations")
+    asset = models.ForeignKey("ledger.Asset", on_delete=models.PROTECT, related_name="valuations")
+    reference_date = models.DateField()
+    value_usd = models.DecimalField(max_digits=20, decimal_places=2)
+    valuation_method = models.CharField(max_length=32, choices=VALUATION_METHODS)
+    confirmed = models.BooleanField(default=False)
+    source_document_id = models.CharField(max_length=128, blank=True)
+    source_reference = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["account", "asset", "reference_date"],
+            name="uniq_valuation_account_asset_date",
+        )]
+
+    def clean(self):
+        if self.value_usd is not None and self.value_usd < 0:
+            raise ValueError("value_usd não pode ser negativo.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.asset.ticker}@{self.account} {self.reference_date} = US$ {self.value_usd}"
