@@ -13,7 +13,7 @@ automática por 8. DARF abaixo do mínimo não é "imposto extinto": fica claro 
 
 **Blocked by:** 02 (Referências legais corretas).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Modelo FilingRule versionado por exercício (vencimento, código DARF, mínimos, máximo de quotas, base legal, homologação) — sem constantes hardcoded na geração
 - [ ] Exercício sem regra homologada → orientação PRELIMINAR com aviso; nunca data inventada
