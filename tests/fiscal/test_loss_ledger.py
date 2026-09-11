@@ -11,6 +11,7 @@ from unittest import mock
 import pytest
 
 from fiscal.engine import TaxEngine
+from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, LossCompensation, LossRecord, TaxRule
 from ledger.models import Asset, BrokerAccount
 from ledger.service import EventService
@@ -90,16 +91,46 @@ def test_ct005_fifo_multianual_compensa_e_rastreia(db, residente, rules):
     assert LossCompensation.objects.filter(year=2025).count() == 1
 
 
-def test_compensacao_eh_idempotente(db, residente, rules):
+def test_refechamento_preserva_saldo_com_consumo_real(db, residente, rules):
+    """Ticket 09 (auditoria-fiscal): o teste antigo de 'idempotência' usava um
+    cenário sem consumo efetivo (não compensava nada), mascarando o bug —
+    apply_compensation apagava as compensações sem devolver os saldos às
+    perdas de origem, zerando saldo que ainda existia. Regressão real:
+    2024 perda R$ 2.000; 2025 lucro R$ 1.000; fechar 2025 duas vezes →
+    saldo restante TEM QUE continuar R$ 1.000."""
     conta = _conta(2024)
     asset = Asset.objects.create(ticker="NVDA", description="Nvidia", asset_type="FOREIGN_EQUITY")
-    _buy_sell(conta, asset, 2024, sell_price=Decimal(70))
+    # duas vendas com perda em 2024: 1.500 + 500 = 2.000
+    _buy_sell(conta, asset, 2024, sell_price=Decimal(70), sell_dia=date(2024, 5, 1))
+    _buy_sell(conta, asset, 2024, sell_price=Decimal(90), sell_dia=date(2024, 7, 1),
+              buy_dia=date(2024, 2, 5))
     with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
-        TaxEngine(2024).save_snapshot(2024)
-        TaxEngine(2024).save_snapshot(2024)
-    # 2024 não tem rendimento: nada a compensar; saldo intocado após refechamento
-    assert LossCompensation.objects.filter(year=2024).count() == 0
-    assert LossRecord.objects.get().remaining_brl == Decimal(1500)
+        TaxEngine(2024).save_snapshot(2024)  # registra as perdas no ledger
+    assert sum(r.remaining_brl for r in LossRecord.objects.all()) == Decimal(2000)
+    conta25 = _conta(2025)
+    _buy_sell(conta25, asset, 2025, sell_price=Decimal(120))  # ganho 1.000
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        TaxEngine(2025).save_snapshot(2025)
+    assert sum(r.remaining_brl for r in LossRecord.objects.all()) == Decimal(1000)
+    # refechamento de 2025: saldo NÃO pode virar zero nem dobrar consumo
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        TaxEngine(2025).save_snapshot(2025)
+    assert sum(r.remaining_brl for r in LossRecord.objects.all()) == Decimal(1000)
+    assert LossCompensation.objects.filter(year=2025).count() == 1
+
+
+def test_recalculo_ano_anterior_com_posterior_fechado_bloqueia(db, residente, rules):
+    """Ticket 09: nunca alterar história fechada invisivelmente — recalcular
+    2025 com 2026 já fechado é bloqueado com orientação explícita."""
+    from django.core.exceptions import ValidationError
+
+    AnnualAssessment.objects.create(
+        year=2026, rule_version="V2", income_brl=Decimal(0), loss_brl=Decimal(0),
+        taxable_brl=Decimal(0), tax_brl=Decimal(0), withholding_credit_brl=Decimal(0),
+        tax_due_brl=Decimal(0), loss_carryforward_brl=Decimal(0),
+    )
+    with pytest.raises(ValidationError, match="cascata"):
+        LossLedgerService.apply_compensation(2025, Decimal("1000.00"))
 
 
 # ------------------------------------------------- relatório discrimina origem

@@ -6,8 +6,8 @@ from django.utils import timezone
 from ledger.models import ForeignTaxPayment, ForeignTaxPaymentAudit
 
 EDITABLE_FIELDS = (
-    "foreign_tax_payment_date", "jurisdiction_level", "tax_type",
-    "date_evidence_source", "source_document_id", "source_reference",
+    "tax_usd", "country_code", "foreign_tax_payment_date", "jurisdiction_level",
+    "tax_type", "date_evidence_source", "source_document_id", "source_reference",
 )
 
 

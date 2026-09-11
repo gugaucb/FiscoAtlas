@@ -20,7 +20,8 @@ class OpeningPositionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from ledger.models import BrokerAccount
-        self.fields["account"].required = False
+        # Auditoria-fiscal 03: abertura é por conta — obrigatória no cadastro
+        self.fields["account"].required = True
         self.fields["account"].queryset = BrokerAccount.objects.filter(active=True)
         self.fields["notes"].required = False
 

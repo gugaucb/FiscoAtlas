@@ -132,8 +132,13 @@ def render_pdf(report: dict) -> bytes:
     story.append(Spacer(1, 12))
     darf = report.get("darf")
     if darf:
-        story.append(Paragraph(f"8 — ORIENTAÇÃO DE PAGAMENTO — DARF {darf['codigo']} ({darf['descricao']})", h2))
-        if darf.get("dispensado"):
+        story.append(Paragraph(
+            "8 — ORIENTAÇÃO DE PAGAMENTO — DARF "
+            f"{darf.get('codigo') or '—'} — IRPF Declaração de Ajuste Anual "
+            f"[{darf.get('status')}]", h2))
+        if darf.get("aviso"):
+            story.append(_line(body, darf["aviso"]))
+        if darf.get("adiado"):
             story.append(_line(body, darf["mensagem"]))
         else:
             venc = darf["cota_unica"].get("vencimento")

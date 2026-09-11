@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import django.forms as forms
-from ledger.models import DATE_EVIDENCE_SOURCES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
+from ledger.models import DATE_EVIDENCE_SOURCES, FOREIGN_TAX_STATES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
 from ledger.foreign_tax_forms import ForeignTaxPaymentForm  # noqa: F401 (API única de formulários)
 
 LABELS = {
@@ -48,6 +48,18 @@ class EventForm(forms.ModelForm):
         label="Motivo da PTAX manual",
         help_text="Ex.: API do BCB indisponível em 31/12/2026.",
     )
+    income_receipt_date = forms.DateField(
+        required=False, widget=forms.DateInput(attrs={"type": "date"}),
+        label="Data de recebimento do rendimento",
+        help_text="Fato gerador do rendimento (auditoria-fiscal 10) — pode "
+                  "diferir da data da operação. Vazio = recebido na data da operação.",
+    )
+    foreign_tax_state = forms.ChoiceField(
+        required=False, choices=[("", "—")] + FOREIGN_TAX_STATES,
+        label="Estado do imposto no exterior",
+        help_text="Obrigatório para rendimentos sem retenção registrada: declare "
+                  "'Sem retenção' explicitamente (não presumimos retenção zero).",
+    )
     foreign_tax_payment_date = forms.DateField(
         required=False, widget=forms.DateInput(attrs={"type": "date"}),
         label="Data de pagamento do imposto no exterior",
@@ -67,15 +79,23 @@ class EventForm(forms.ModelForm):
     source_document_id = forms.CharField(max_length=128, required=False, label="ID do documento")
     source_reference = forms.CharField(max_length=255, required=False, label="Referência do documento")
 
+    tax_usd = forms.DecimalField(
+        required=False, min_value=Decimal("0.01"),
+        label=LABELS["tax_usd"],
+        help_text="Imposto retido no exterior — gera registro em ForeignTaxPayment "
+                  "com país, jurisdição, tipo e data documentados.",
+    )
+
     class Meta:
         model = FinancialEvent
-        fields = ["event_type", "account", "trade_date", "quantity",
-                  "price_usd", "fee_usd", "tax_usd", "amount_usd",
+        fields = ["event_type", "account", "trade_date", "income_receipt_date",
+                  "quantity",
+                  "price_usd", "fee_usd", "amount_usd",
                   "split_ratio_from", "split_ratio_to", "notes"]
         labels = {"event_type": LABELS["event_type"], "account": LABELS["account"],
                   "trade_date": LABELS["trade_date"], "quantity": LABELS["quantity"],
                   "price_usd": LABELS["price_usd"], "fee_usd": LABELS["fee_usd"],
-                  "tax_usd": LABELS["tax_usd"], "amount_usd": LABELS["amount_usd"],
+                  "amount_usd": LABELS["amount_usd"],
                   "split_ratio_from": LABELS["split_ratio_from"],
                   "split_ratio_to": LABELS["split_ratio_to"],
                   "notes": LABELS["notes"]}

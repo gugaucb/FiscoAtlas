@@ -68,7 +68,7 @@ class EventCorrectView(generic.UpdateView):
         ev = self.get_object()
         initial = {f: getattr(ev, f) for f in
                    ("event_type", "account", "trade_date", "quantity",
-                    "price_usd", "fee_usd", "tax_usd", "amount_usd", "notes")}
+                    "price_usd", "fee_usd", "amount_usd", "notes")}
         initial["asset_ticker"] = ev.asset.ticker if ev.asset else None
         return initial
 
@@ -151,7 +151,10 @@ class StatementImportView(generic.View):
             from ledger.importers.schwab import SchwabStatementImporter
 
             importer = SchwabStatementImporter(conta)
-            ctx["preview"] = importer.preview(csv_text)
+            preview = importer.preview(csv_text)
+            ctx["preview"] = preview
+            ctx["pendencias"] = [r for r in preview if r.get("status") != "OK"]
+            ctx["n_suportadas"] = sum(1 for r in preview if r.get("status") == "OK")
             ctx["csv_text"] = csv_text
         return render(request, self.template_name, ctx)
 
@@ -170,9 +173,12 @@ class StatementImportView(generic.View):
             messages.error(request, "Selecione o arquivo CSV do extrato.")
             return redirect("import-statement", account_id=account_id)
         text = arquivo.read().decode("utf-8-sig", errors="replace")
+        acknowledge = bool(request.POST.get("reconhecer_pendencias"))
         try:
             with transaction.atomic():
-                batch = SchwabStatementImporter(conta).import_csv(text)
+                batch = SchwabStatementImporter(conta).import_csv(
+                    text, acknowledge_pending=acknowledge
+                )
         except (StatementImportError, ValidationError, ValueError) as e:
             transaction.set_rollback(True)
             messages.error(request, f"Falha na importação: {e}")
@@ -180,7 +186,10 @@ class StatementImportView(generic.View):
         if batch.events_created == 0:
             messages.info(request, "Arquivo já importado anteriormente — nenhum evento criado.")
         else:
-            messages.success(
-                request, f"Extrato importado: {batch.events_created} evento(s) criado(s)."
-            )
+            msg = f"Extrato importado: {batch.events_created} evento(s) criado(s)."
+            if batch.rows_unsupported:
+                msg += f" {batch.rows_unsupported} linha(s) com ação não suportada registradas como pendência — resolva-as antes do fechamento anual."
+                messages.warning(request, msg)
+            else:
+                messages.success(request, msg)
         return redirect("import-statement", account_id=account_id)

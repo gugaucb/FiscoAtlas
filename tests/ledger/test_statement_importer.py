@@ -9,8 +9,9 @@ from unittest import mock
 
 import pytest
 
+from ledger.importers.base import StatementImportError
 from ledger.importers.schwab import SchwabStatementImporter
-from ledger.models import Asset, BrokerAccount, FinancialEvent, ImportBatch
+from ledger.models import Asset, BrokerAccount, FinancialEvent, ImportBatch, ImportIssue
 from ledger.service import EventService
 
 RATE = Decimal("5.00000000")
@@ -20,6 +21,83 @@ CSV_EXEMPLO = """Date,Action,Symbol,Description,Quantity,Price,Amount,Fees
 01/05/2026,Buy,AAPL,Apple Inc.,10,100.00,-1000.00,0.00
 03/15/2026,Dividend,AAPL,Dividend,10,1.00,9.00,0.00
 """
+
+CSV_SELL = """Date,Action,Symbol,Description,Quantity,Price,Amount,Fees
+01/05/2026,Buy,AAPL,Apple Inc.,10,100.00,-1000.00,0.00
+04/10/2026,Sell,AAPL,Sale,4,120.00,480.00,1.00
+"""
+
+CSV_MISTO = """Date,Action,Symbol,Description,Quantity,Price,Amount,Fees
+01/05/2026,Buy,AAPL,Apple Inc.,10,100.00,-1000.00,0.00
+04/20/2026,Transfer,AAPL,Journal,10,0.00,0.00,0.00
+04/22/2026,Fee Received,AAPL,Unknown action,0,0.00,5.00,0.00
+"""
+
+
+# ---- Auditoria-fiscal 01: nenhuma linha desaparece silenciosamente ----
+
+def test_sell_importado_como_evento_venda(ambiente):
+    """Regressão (auditoria-fiscal 01): antes, Sell era descartada na leitura
+    (ACTION_MAP sem 'sell' + continue silencioso) — fato tributável inteiro
+    desaparecia. Agora vira evento SELL."""
+    conta = ambiente
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        batch = SchwabStatementImporter(conta).import_csv(CSV_SELL)
+    eventos = FinancialEvent.objects.order_by("trade_date")
+    assert eventos.count() == 2
+    compra, venda = eventos
+    assert compra.event_type == "BUY"
+    assert venda.event_type == "SELL"
+    assert venda.quantity == Decimal(4)
+    assert venda.amount_usd == Decimal("479.00")  # 4*120 - 1 de taxa
+    assert batch.rows_source == 2
+    assert batch.rows_imported == 2
+    assert batch.rows_unsupported == 0
+    assert batch.reconciled
+
+
+def test_preview_mostra_linha_nao_suportada(ambiente):
+    """Regressão (auditoria-fiscal 01): antes, ação desconhecida simplesmente
+    não aparecia na prévia. Agora vira pendência visível e bloqueante."""
+    conta = ambiente
+    preview = SchwabStatementImporter(conta).preview(CSV_MISTO)
+    assert len(preview) == 3  # nada desaparece
+    pendente = [r for r in preview if r["status"] == "UNSUPPORTED"]
+    assert len(pendente) == 2
+    transfer = next(r for r in pendente if r["raw_action"] == "Transfer")
+    assert transfer["severity"] == "BLOCKING"
+    assert transfer["line"] == 3
+    assert transfer["reason"]
+
+
+def test_import_sem_reconhecimento_bloqueia(ambiente):
+    """Importação com pendências exige reconhecimento explícito do usuário."""
+    conta = ambiente
+    with pytest.raises(StatementImportError) as e:
+        SchwabStatementImporter(conta).import_csv(CSV_MISTO)
+    assert "não suportada" in str(e.value)
+    assert not ImportBatch.objects.exists()  # transação rollback
+    assert FinancialEvent.objects.count() == 0
+
+
+def test_import_com_reconhecimento_cria_issues(ambiente):
+    """Com reconhecimento explícito, importadas + pendências conciliam com
+    o arquivo e cada linha não suportada vira ImportIssue PENDING."""
+    conta = ambiente
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        batch = SchwabStatementImporter(conta).import_csv(
+            CSV_MISTO, acknowledge_pending=True
+        )
+    assert batch.rows_source == 3
+    assert batch.rows_imported == 1
+    assert batch.rows_unsupported == 2
+    assert batch.reconciled
+    issues = ImportIssue.objects.filter(batch=batch)
+    assert issues.count() == 2
+    assert all(i.status == ImportIssue.STATUS_PENDING for i in issues)
+    assert {i.line_number for i in issues} == {3, 4}
+    assert {i.raw_action for i in issues} == {"Transfer", "Fee Received"}
+    assert FinancialEvent.objects.count() == 1
 
 
 @pytest.fixture

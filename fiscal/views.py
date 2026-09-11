@@ -45,10 +45,14 @@ class CloseYearView(FriendlyErrorMixin, generic.View):
         from django.core.exceptions import ValidationError
         from django.db import transaction
 
+        from fiscal.reconciliation import AnnualReconciliationService
         from fiscal.validator import AnnualClosingValidator
 
         try:
             with transaction.atomic():
+                # Auditoria-fiscal 12: primeiro a reconciliação (dados de
+                # entrada completos e conciliados), depois as regras fiscais.
+                AnnualReconciliationService(year).run_or_raise()
                 AnnualClosingValidator(year).validate_or_raise()
                 result = TaxEngine(year).compute()
                 snapshot = TaxEngine.save_snapshot(year)

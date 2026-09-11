@@ -76,11 +76,21 @@ class BrokerAccount(models.Model):
     active = models.BooleanField(default=True)
 
     def clean(self):
-        if not (Decimal("0.01") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
-            raise ValidationError("ownership_share deve estar entre 0,01 e 100,00.")
+        # auditoria-fiscal 06: 0% é permitido como decisão EXPLÍCITA do
+        # usuário (conta de terceiros) — nunca como default silencioso.
+        if not (Decimal("0.00") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
+            raise ValidationError("ownership_share deve estar entre 0,00 e 100,00.")
 
     def __str__(self):
         return self.name or f"{self.broker_name} ({self.account_number})"
+
+
+FOREIGN_TAX_STATES = [
+    ("UNDECLARED", "Não declarado"),
+    ("NO_WITHHOLDING", "Sem retenção no exterior (declarado pelo contribuinte)"),
+    ("RECORDED", "Registrado em ForeignTaxPayment"),
+    ("REVIEW_PENDING", "Pendente de revisão documental"),
+]
 
 
 class FinancialEvent(models.Model):
@@ -89,13 +99,22 @@ class FinancialEvent(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT, null=True, blank=True, related_name="events")
     trade_date = models.DateField()
     settle_date = models.DateField(null=True, blank=True)
+    # Auditoria-fiscal 10: fato gerador do RENDIMENTO é o recebimento efetivo
+    # (ex.: dividendo negociado 31/12 creditado 02/01 pertence ao ano do
+    # recebimento). Ganhos de alienação continuam pela trade_date.
+    income_receipt_date = models.DateField(null=True, blank=True)
+    # Auditoria-fiscal 12: estado declarado do imposto exterior do rendimento
+    # — "sem imposto" não é retenção zero presumida; exige declaração
+    # explícita (NO_WITHHOLDING) ou fica pendente de reconciliação.
+    foreign_tax_state = models.CharField(
+        max_length=16, choices=FOREIGN_TAX_STATES, default="UNDECLARED",
+    )
     quantity = models.DecimalField(max_digits=24, decimal_places=10, null=True, blank=True)
     price_usd = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     fee_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     amount_usd = models.DecimalField(max_digits=20, decimal_places=8)
-    # DEPRECATED: fonte canônica do imposto é ForeignTaxPayment (0..N por evento).
-    # Mantido durante a transição; remoção no ticket 03 (engine/relatório/memória).
-    tax_usd = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+    # Auditoria-fiscal 04: o campo tax_usd duplicado foi removido — a fonte
+    # canônica do imposto pago no exterior é ForeignTaxPayment (0..N por evento).
     fx_rate = models.DecimalField(max_digits=12, decimal_places=8, null=True, blank=True)
     amount_brl = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
     notes = models.CharField(max_length=500, blank=True)
@@ -116,6 +135,11 @@ class FinancialEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} {self.trade_date} {self.asset or ''} {self.amount_usd}"
+
+    @property
+    def foreign_tax_total_usd(self) -> Decimal:
+        """Soma dos impostos pagos no exterior (fonte: ForeignTaxPayment)."""
+        return sum((p.tax_usd for p in self.foreign_tax_payments.all()), Decimal(0))
 
 
 JURISDICTION_LEVELS = [("FEDERAL", "Federal"), ("STATE", "Estadual"), ("LOCAL", "Municipal"), ("UNKNOWN", "Desconhecida")]
@@ -192,9 +216,47 @@ class OpeningPosition(models.Model):
     total_cost_brl = models.DecimalField(max_digits=20, decimal_places=8)
     notes = models.CharField(max_length=500, blank=True)
 
+    class Meta:
+        constraints = [
+            # Auditoria-fiscal 03: uma abertura por conta + ativo + data
+            # (aberturas legadas sem conta permanecem permitidas no schema,
+            # mas a consulta fiscal é sempre por conta — ver ledger/position.py)
+            models.UniqueConstraint(
+                fields=["account", "asset", "reference_date"],
+                name="uniq_opening_account_asset_date",
+            ),
+        ]
+
     @property
     def average_cost_brl(self):
         return self.total_cost_brl / self.quantity if self.quantity else Decimal(0)
+
+
+class DocumentedBalance(models.Model):
+    """Auditoria-fiscal 12: saldo documental da corretora na data-base.
+
+    A reconciliação anual confronta o saldo do ledger e as posições
+    calculadas com os saldos documentados (extrato) — divergência ou
+    ausência vira pendência, nunca passagem automática."""
+
+    account = models.ForeignKey(BrokerAccount, on_delete=models.PROTECT, related_name="documented_balances")
+    reference_date = models.DateField()
+    cash_usd = models.DecimalField(max_digits=20, decimal_places=2)
+    # posições documentadas em 31/12: [{"ticker": ..., "quantity": ...}]
+    positions = models.JSONField(default=list)
+    confirmed = models.BooleanField(default=False)
+    source_document_id = models.CharField(max_length=128, blank=True)
+    source_reference = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["account", "reference_date"], name="uniq_documented_balance",
+        )]
+
+    def __str__(self):
+        return f"{self.account} @ {self.reference_date} caixa US$ {self.cash_usd}"
 
 
 class ImportBatch(models.Model):
@@ -206,7 +268,53 @@ class ImportBatch(models.Model):
     file_hash = models.CharField(max_length=64, unique=True)
     events_created = models.PositiveIntegerField(default=0)
     rows_total = models.PositiveIntegerField(default=0)
+    rows_source = models.PositiveIntegerField(default=0)
+    rows_imported = models.PositiveIntegerField(default=0)
+    rows_unsupported = models.PositiveIntegerField(default=0)
+    rows_ignored_confirmed = models.PositiveIntegerField(default=0)
     imported_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def reconciled(self) -> bool:
+        """Auditoria-fiscal 01: linhas do arquivo = importadas + pendências +
+        ignoradas com reconhecimento explícito. Nada desaparece sem rastro."""
+        return self.rows_source == (
+            self.rows_imported + self.rows_unsupported + self.rows_ignored_confirmed
+        )
 
     def __str__(self):
         return f"{self.source} {self.imported_at:%d/%m/%Y %H:%M} (+{self.events_created})"
+
+
+class ImportIssue(models.Model):
+    """Auditoria-fiscal 01: linha de extrato não importada — pendência
+    explícita e rastreável. Nenhuma linha do CSV pode desaparecer
+    silenciosamente; toda linha não tratada vira um issue PENDING.
+
+    Estados: PENDING → RESOLVED_IMPORTED (lançado manualmente) ou
+    RESOLVED_IGNORED (ignorado com justificativa obrigatória)."""
+
+    STATUS_PENDING = "PENDING"
+    STATUS_RESOLVED_IMPORTED = "RESOLVED_IMPORTED"
+    STATUS_RESOLVED_IGNORED = "RESOLVED_IGNORED"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pendente"),
+        (STATUS_RESOLVED_IMPORTED, "Resolvido — lançado manualmente"),
+        (STATUS_RESOLVED_IGNORED, "Resolvido — ignorado com justificativa"),
+    ]
+
+    batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="issues")
+    line_number = models.PositiveIntegerField()
+    raw_action = models.CharField(max_length=128, blank=True)
+    raw_data = models.JSONField(default=dict)
+    severity = models.CharField(max_length=16, default="BLOCKING")
+    reason = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    resolution = models.CharField(max_length=255, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["batch", "line_number"]
+
+    def __str__(self):
+        return f"Issue #{self.pk} lote {self.batch_id} linha {self.line_number} ({self.status})"

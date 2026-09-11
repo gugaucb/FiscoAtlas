@@ -28,7 +28,7 @@ A partir de **01/01/2024**, o regime fiscal de investimentos no exterior passou 
    - **Exceção Legal:** PTAX de **COMPRA** na data documental do efetivo pagamento para conversão do imposto retido/pago no exterior (art. 4º, §2º e IN RFB 2.180/2024, art. 12, §3º). As cotações de rendimento e imposto **não se confundem** nem compartilham cotação presumida.
 6. **Contas Não Remuneradas:** A variação cambial sobre depósitos em moeda estrangeira não remunerados é isenta/não tributável (IN RFB 2.180/2024, art. 3º).
 7. **Obrigações Acessórias e Limites:**
-   - **CBE/BACEN (Resolução BCB nº 278/2022):** Obrigatoriedade anual para patrimônio no exterior igual ou superior a US$ 1.000.000 em 31/12.
+   - **CBE/BACEN (Resolução BCB nº 279/2022):** Obrigatoriedade anual para patrimônio no exterior igual ou superior a US$ 1.000.000 em 31/12.
    - **Tributação Mínima de Altas Rendas (Lei nº 15.270/2025):** Aplicável a partir do ano-calendário 2026 para contribuintes com rendimentos globais anuais superiores a R$ 600.000.
 
 ---
@@ -310,7 +310,7 @@ Esta seção documenta com rigor os requisitos que demandam intervenção técni
 
 #### [NÃO ATENDIDO] RF-CBE-001 a RF-CBE-007 — Inexistência do Módulo de Avaliação da CBE
 - **Prioridade:** P0
-- **Motivo do Desalinhamento:** O sistema não possui qualquer lógica, serviço ou relatório para avaliar a obrigatoriedade da **Declaração de Capitais Brasileiros no Exterior (CBE)** perante o Banco Central do Brasil (Resolução BCB nº 278/2022). O investidor brasileiro que acumula US$ 1.000.000,00 ou mais na data-base de 31 de dezembro fica sem sinalização ou alerta de exigibilidade de entrega dessa obrigação acessória mandatória. Além disso, quando o patrimônio cadastrado for inferior ao limite, o sistema deve registrar o status `CBE_UNDETERMINED` a menos que o contribuinte confirme expressamente que não possui outros bens fora do sistema.
+- **Motivo do Desalinhamento:** O sistema não possui qualquer lógica, serviço ou relatório para avaliar a obrigatoriedade da **Declaração de Capitais Brasileiros no Exterior (CBE)** perante o Banco Central do Brasil (Resolução BCB nº 279/2022). O investidor brasileiro que acumula US$ 1.000.000,00 ou mais na data-base de 31 de dezembro fica sem sinalização ou alerta de exigibilidade de entrega dessa obrigação acessória mandatória. Além disso, quando o patrimônio cadastrado for inferior ao limite, o sistema deve registrar o status `CBE_UNDETERMINED` a menos que o contribuinte confirme expressamente que não possui outros bens fora do sistema.
 - **Partes do Código Afetadas:** Módulo inexistente (`fiscal/` e `ledger/`).
 - **Como Sanar:**
   1. Criar serviço `CbeService` em `fiscal/cbe.py`:
@@ -333,7 +333,7 @@ Esta seção documenta com rigor os requisitos que demandam intervenção técni
              return {
                  "total_foreign_capital_usd": total_usd,
                  "status": "CBE_REQUIRED" if is_required else "CBE_UNDETERMINED",
-                 "legal_basis": "Resolução BCB nº 278/2022",
+                 "legal_basis": "Resolução BCB nº 279/2022",
              }
      ```
   2. Exibir o bloco de status da CBE no `ReportService.build()` e no relatório em PDF.

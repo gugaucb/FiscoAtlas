@@ -86,11 +86,22 @@ def test_brokeraccount_campos_de_titularidade():
     assert conta.ownership_share == Decimal("50.00")
 
 
-@pytest.mark.parametrize("share", [Decimal("0"), Decimal("100.01")])
+@pytest.mark.parametrize("share", [Decimal("100.01"), Decimal("-0.01")])
 def test_brokeraccount_ownership_share_fora_do_intervalo(share):
     conta = BrokerAccount(broker_name="A", account_number="3", ownership_share=share)
     with pytest.raises(ValidationError):
         conta.full_clean()
+
+
+def test_brokeraccount_ownership_share_zero_explicito_valido():
+    """Ticket 06 (auditoria-fiscal): 0% é permitido como decisão EXPLÍCITA
+    (conta de terceiros). O teste antigo proibia 0 na faixa inteira —
+    substituído porque a regra fiscal silenciosa era o problema, não o valor."""
+    conta = BrokerAccount(broker_name="A", account_number="3",
+                          ownership_type="THIRD_PARTY", ownership_share=Decimal("0"))
+    conta.full_clean()  # não levanta
+    conta.save()
+    assert conta.ownership_share == Decimal("0")
 
 
 def test_relatorio_proporcional_conta_conjunta(residente):

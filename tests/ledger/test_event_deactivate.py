@@ -22,7 +22,7 @@ def conta_com_buy():
     PtaxService().override(date(2026, 1, 10), Decimal("5.4"), "teste")
     ev = FinancialEvent.objects.create(
         account=conta, asset=asset, event_type="BUY", trade_date=date(2026, 1, 10),
-        quantity=Decimal("10"), price_usd=Decimal("100"), fee_usd=Decimal(0), tax_usd=Decimal(0),
+        quantity=Decimal("10"), price_usd=Decimal("100"), fee_usd=Decimal(0),
         amount_usd=Decimal("-1000"), fx_rate=Decimal("5.4"), amount_brl=Decimal("-5400"),
     )
     return conta, asset, ev

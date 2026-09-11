@@ -137,3 +137,67 @@ class DirpfSchema(models.Model):
 
     def __str__(self):
         return f"{self.schema_version} ({self.filing_year})"
+
+
+class FilingRule(models.Model):
+    """Ticket 08 (auditoria-fiscal): regras de arrecadação do DARF versionadas
+    por EXERCÍCIO da declaração (ano-calendário 2026 → exercício 2027).
+    Sem regra homologada, a orientação de pagamento fica PRELIMINAR — nunca
+    vencimento ou código inventados a partir de constantes hardcoded."""
+
+    filing_year = models.PositiveIntegerField(unique=True)
+    rule_version = models.CharField(max_length=64)
+    due_date = models.DateField()                       # vencimento da cota única
+    darf_code = models.CharField(max_length=4)          # ex.: "0211"
+    minimum_darf = models.DecimalField(max_digits=20, decimal_places=2, default=10)
+    minimum_installment = models.DecimalField(max_digits=20, decimal_places=2)
+    minimum_tax_for_installment = models.DecimalField(max_digits=20, decimal_places=2)
+    maximum_installments = models.PositiveIntegerField()
+    is_homologated = models.BooleanField(default=False)
+    legal_basis = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.rule_version} (exercício {self.filing_year})"
+
+
+VALUATION_METHODS = [
+    ("MARKET_CLOSE", "Preço de fechamento na data-base"),
+    ("BROKER_STATEMENT", "Extrato da corretora na data-base"),
+    ("USER_PROVIDED", "Valor informado pelo contribuinte"),
+]
+
+
+class AssetValuation(models.Model):
+    """Ticket 07 (auditoria-fiscal): valor de mercado do ativo na data-base
+    da CBE, informado e confirmado pelo contribuinte — nunca custo médio
+    como proxy patrimonial. Sem valor confirmado na data-base, o item fica
+    UNDETERMINED (sem chute)."""
+
+    account = models.ForeignKey("ledger.BrokerAccount", on_delete=models.PROTECT, related_name="asset_valuations")
+    asset = models.ForeignKey("ledger.Asset", on_delete=models.PROTECT, related_name="valuations")
+    reference_date = models.DateField()
+    value_usd = models.DecimalField(max_digits=20, decimal_places=2)
+    valuation_method = models.CharField(max_length=32, choices=VALUATION_METHODS)
+    confirmed = models.BooleanField(default=False)
+    source_document_id = models.CharField(max_length=128, blank=True)
+    source_reference = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["account", "asset", "reference_date"],
+            name="uniq_valuation_account_asset_date",
+        )]
+
+    def clean(self):
+        if self.value_usd is not None and self.value_usd < 0:
+            raise ValueError("value_usd não pode ser negativo.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.asset.ticker}@{self.account} {self.reference_date} = US$ {self.value_usd}"

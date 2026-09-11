@@ -1,0 +1,37 @@
+{% extends "ledger/base.html" %}
+{% block content %}
+<h1>Valor de ativos na data-base (CBE)</h1>
+<p class="page-sub">A CBE (Res. BCB nº 279/2022) usa o valor de mercado na
+  data-base informado e confirmado — nunca o custo médio. Sem valor confirmado,
+  o item da apuração fica <strong>UNDETERMINED</strong>.</p>
+<div class="card">
+  <h2>Novo valor na data-base</h2>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="errors">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn">Registrar valor</button>
+  </form>
+</div>
+<h2>Valores registrados</h2>
+<table>
+  <thead>
+  <tr><th>Data-base</th><th>Conta</th><th>Ativo</th><th>Valor (USD)</th><th>Método</th><th>Confirmado</th></tr>
+  </thead>
+  <tbody>
+  {% for v in valuations %}
+  <tr><td class="num">{{ v.reference_date|date:"d/m/Y" }}</td>
+      <td>{{ v.account }}</td><td>{{ v.asset.ticker }}</td>
+      <td class="money">US$ {{ v.value_usd }}</td><td>{{ v.get_valuation_method_display }}</td>
+      <td>{% if v.confirmed %}<span class="badge ok">confirmado</span>{% else %}<span class="badge">pendente</span>{% endif %}</td></tr>
+  {% empty %}
+  <tr><td colspan="6" class="empty">Nenhum valor registrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

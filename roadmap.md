@@ -255,7 +255,7 @@ TAREFA (SEGUIR TDD):
 #### Prompt para Claude Code:
 ```markdown
 Atue como especialista em regulação cambial e tributária brasileira.
-Implemente o módulo de conformidade com a Declaração de Capitais Brasileiros no Exterior (CBE / Banco Central - Resolução BCB nº 278/2022) via TDD (RF-CBE-001 a RF-CBE-007).
+Implemente o módulo de conformidade com a Declaração de Capitais Brasileiros no Exterior (CBE / Banco Central - Resolução BCB nº 279/2022) via TDD (RF-CBE-001 a RF-CBE-007).
 
 CONTEXTO DO PROBLEMA:
 O FiscoAtlas não possui nenhuma menção ou cálculo da CBE. Todo residente fiscal brasileiro com ativos no exterior que somem US$ 1.000.000,00 ou mais na data-base de 31 de dezembro é obrigado a entregar a CBE Anual ao Banco Central, sob pena de multas de até R$ 250.000,00. Quando o valor for inferior, o sistema deve registrar `CBE_UNDETERMINED` a menos que o usuário declare formalmente a completude patrimonial.

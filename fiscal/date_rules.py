@@ -43,6 +43,16 @@ class TaxDateResolver:
             if reference_date is None:
                 raise ValueError("REFERENCE_DATE exige a data de referência")
             return reference_date
+        if date_rule == "INCOME_RECEIPT_DATE":
+            # Auditoria-fiscal 10: o fato gerador do rendimento é o
+            # recebimento — sem fallback silencioso para a trade_date.
+            if event.income_receipt_date is None:
+                raise ValueError(
+                    "Rendimento sem data de recebimento registrada "
+                    "(income_receipt_date) — informe a data documental do "
+                    "recebimento antes de apurar."
+                )
+            return event.income_receipt_date
         # modelo atual: a data do fato gerador do evento é trade_date
         # (compra, alienação e recebimento de rendimento hoje coincidem no
         # campo); quando houver campos próprios, resolver aqui.

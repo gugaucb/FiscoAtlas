@@ -4,10 +4,12 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from fiscal.date_rules import TaxDateResolver
+from fiscal.foreign_tax import ForeignTaxCreditService
 from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
 from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent
+from ledger.ownership import OwnershipService
 from ledger.position import PositionService
 
 ZERO = Decimal("0.00")
@@ -16,28 +18,24 @@ ZERO = Decimal("0.00")
 # direta (RF-AST-009/RF-VAL-002): exigem regime próprio.
 BLOCKED_ASSET_TYPES = ("CONTROLLED_ENTITY", "TRUST", "UNKNOWN")
 
-# RF-FTC-002/003 (Lei 14.754/2023, art. 4º): a compensação decorre de
-# reciprocidade de tratamento para tributos FEDERAIS sobre a renda.
-# Imposto estadual/municipal (ex.: State/Local Income Tax dos EUA) não é
-# elegível; países fora da lista também não geram crédito.
-RECIPROCITY_COUNTRIES = {"US"}
-
 
 def _pagamentos_por_evento(events):
-    """Mapa event_id → ForeignTaxPayment (fatos do imposto no exterior)."""
+    """Mapa event_id → list[ForeignTaxPayment].
+
+    Auditoria-fiscal 04: um evento pode ter VÁRIOS pagamentos de imposto
+    (ex.: retenção federal + estadual dos EUA) — todos entram no cálculo."""
     from ledger.models import ForeignTaxPayment
     ev_ids = [ev.id for ev in events]
-    return {
-        p.financial_event_id: p
-        for p in ForeignTaxPayment.objects.filter(financial_event_id__in=ev_ids)
-    }
+    out: dict = {}
+    for p in ForeignTaxPayment.objects.filter(financial_event_id__in=ev_ids):
+        out.setdefault(p.financial_event_id, []).append(p)
+    return out
 
 
 def fx_imposto_exterior(ev, pagamento, ptax_service) -> Decimal:
     """PTAX COMPRA na data documental do pagamento (Lei 14.754/2023, art. 4º §2º).
 
-    Fallback para o fx do evento somente quando o evento antecede a entidade
-    ForeignTaxPayment (transição; ticket 03 remove event.tax_usd)."""
+    Fallback para o fx do evento somente quando não há pagamento (imposto zero)."""
     if pagamento:
         data, quote = TaxDateResolver().resolve_ptax_request("FOREIGN_TAX", ev, pagamento)
         return ptax_service.get_rate(data, quote_type=quote).rate
@@ -108,11 +106,18 @@ class TaxEngine:
         self._bloquear_ativos_nao_cobertos()
         rule = TaxRule.objects.for_year(self.year)
         rate = Decimal(rule.brackets[-1]["rate"])
+        # Auditoria-fiscal 10: o ano fiscal difere por componente —
+        # ganhos de alienação: data da operação (trade_date é o fato gerador
+        # correto no IRPF); rendimentos: data de RECEBIMENTO. Sem fallback
+        # silencioso: rendimento sem income_receipt_date (legado) bloqueia.
+        gain_q = Q(event_type__in=("SELL", "CASH_IN_LIEU"), trade_date__year=self.year)
+        income_q = Q(event_type__in=("DIVIDEND", "JUROS")) & (
+            Q(income_receipt_date__year=self.year)
+            | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
+        )
         events = list(
-            FinancialEvent.objects.filter(
-                active=True, trade_date__year=self.year,
-                event_type__in=("DIVIDEND", "JUROS", "SELL", "CASH_IN_LIEU"),
-            ).select_related("asset").order_by("trade_date", "id")
+            FinancialEvent.objects.filter(gain_q | income_q, active=True)
+            .select_related("asset").order_by("trade_date", "id")
         )
 
         realized_idx = {}
@@ -138,7 +143,7 @@ class TaxEngine:
             refund_of__isnull=False,
         ).select_related("refund_of")
         for refund in refunds:
-            refund_brl = refund.amount_usd * (refund.fx_rate or ZERO)
+            refund_brl = refund.amount_usd * (refund.fx_rate or ZERO) * OwnershipService.taxpayer_share_factor(refund.refund_of.account)
             refunds_por_origem[refund.refund_of_id] = (
                 refunds_por_origem.get(refund.refund_of_id, ZERO) + refund_brl
             )
@@ -153,11 +158,15 @@ class TaxEngine:
             })
         for ev in events:
             fx = ev.fx_rate or ZERO
+            # RF-PER-003 / auditoria-fiscal 06: a titularidade entra no
+            # CÁLCULO (não só na exibição) — fatos fiscais da conta são
+            # atribuídos ao contribuinte pela fatia dele.
+            fator = OwnershipService.taxpayer_share_factor(ev.account)
             if ev.event_type in ("SELL", "CASH_IN_LIEU"):
                 r = realized_idx.get(ev.id)
                 if r is None:
                     continue
-                gain_brl = r["gain_brl"]
+                gain_brl = (r["gain_brl"] * fator).quantize(Decimal("0.01"))
                 gross_brl = gain_brl if gain_brl > 0 else ZERO
                 if gain_brl < 0:
                     loss += -gain_brl
@@ -173,36 +182,58 @@ class TaxEngine:
                     "withholding_brl": ZERO, "credit_used": ZERO,
                 })
             else:  # DIVIDEND, JUROS
-                pagamento = pagamentos.get(ev.id)
-                gross_usd = ev.amount_usd + ev.tax_usd
-                gross_brl = (gross_usd * fx).quantize(Decimal("0.01"))
+                if ev.income_receipt_date is None:
+                    raise ValidationError(
+                        f"Rendimento {ev} (id {ev.id}) sem data de recebimento "
+                        "registrada — dados legados precisam de income_receipt_date "
+                        "antes da apuração (sem fallback silencioso para a data da operação)."
+                    )
+                # Auditoria-fiscal 10: fx do evento é a PTAX VENDA da data de
+                # RECEBIMENTO (resolvida no capture pela data fiscal — ver
+                # EventService.record); o resolver valida a data existente.
+                TaxDateResolver().resolve(event=ev, date_rule="INCOME_RECEIPT_DATE")
+                pagamentos_ev = pagamentos.get(ev.id, [])
+                # Auditoria-fiscal 04: gross = rendimento líquido + soma de
+                # TODOS os pagamentos de imposto do evento (0..N).
+                gross_usd = ev.amount_usd + sum((p.tax_usd for p in pagamentos_ev), ZERO)
+                gross_brl = (gross_usd * fx * fator).quantize(Decimal("0.01"))
                 income += gross_brl
-                # imposto pago no exterior: PTAX COMPRA na data do pagamento
-                fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
-                wh_brl = (ev.tax_usd * fx_tax).quantize(Decimal("0.01"))
-                # RF-FTC-009: deduz estornos do próprio ano (retenção efetiva)
+                # imposto pago no exterior: PTAX COMPRA na data de CADA pagamento
+                # (retido na parcela do contribuinte — titularidade)
+                eligible_wh = ZERO
+                ineligible_wh = ZERO
+                fx_tax_last = fx
+                tax_date_last = ev.trade_date
+                for pagamento in pagamentos_ev:
+                    fx_tax = fx_imposto_exterior(ev, pagamento, PtaxService())
+                    wh = (pagamento.tax_usd * fx_tax * fator).quantize(Decimal("0.01"))
+                    fx_tax_last = fx_tax
+                    tax_date_last = pagamento.foreign_tax_payment_date
+                    # elegibilidade (RF-FTC-002/003): por pagamento, decisão
+                    # centralizada no ForeignTaxCreditService (ticket 05).
+                    if ForeignTaxCreditService.is_eligible(pagamento):
+                        eligible_wh += wh
+                    else:
+                        ineligible_wh += wh
+                wh_brl = eligible_wh + ineligible_wh
+                # RF-FTC-009: deduz estornos do próprio ano (retenção efetiva),
+                # primeiro da parcela elegível
                 refund_brl = refunds_por_origem.get(ev.id, ZERO)
                 if refund_brl > 0:
-                    wh_brl = max(wh_brl - refund_brl, ZERO)
-                # elegibilidade (RF-FTC-002/003): só tributo federal de país
-                # com reciprocidade; evento legado sem pagamento é mantido.
-                if pagamento is not None:
-                    eligible = (
-                        pagamento.jurisdiction_level == "FEDERAL"
-                        and pagamento.country_code in RECIPROCITY_COUNTRIES
-                    )
-                else:
-                    eligible = True
-                used = min(wh_brl, (gross_brl * rate).quantize(Decimal("0.01"))) if eligible else ZERO
+                    deducao = min(refund_brl, eligible_wh)
+                    eligible_wh -= deducao
+                    refund_restante = refund_brl - deducao
+                    ineligible_wh = max(ineligible_wh - refund_restante, ZERO)
+                wh_brl = eligible_wh + ineligible_wh
+                used = min(eligible_wh, (gross_brl * rate).quantize(Decimal("0.01")))
                 credit += used
-                if not eligible:
-                    ineligible_foreign_tax += wh_brl
+                ineligible_foreign_tax += ineligible_wh
                 detail.append({
                     "event": ev, "kind": ev.event_type.lower(), "gross_brl": gross_brl,
                     "withholding_brl": wh_brl, "credit_used": used,
-                    "credit_eligible": eligible,
-                    "fx_income": fx, "fx_tax": fx_tax,
-                    "tax_payment_date": pagamento.foreign_tax_payment_date if pagamento else ev.trade_date,
+                    "credit_eligible": eligible_wh > 0,
+                    "fx_income": fx, "fx_tax": fx_tax_last,
+                    "tax_payment_date": tax_date_last,
                 })
 
         # Prejuízo herdado de anos anteriores (P&R IRPF: prejuízos são

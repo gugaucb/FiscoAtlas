@@ -19,10 +19,10 @@ FOREIGN_TAX_FIELDS = (
 
 
 def resolve_current_event_base_date(data: dict) -> date:
-    """Data base do evento para componentes do rendimento (compatibilidade do
-    modelo atual: único campo de data é trade_date). Quando o TaxDateResolver
-    existir (ticket 02), esta resolução passa a ser guiada por TaxRule.date_rule."""
-    return data["trade_date"]
+    """Data base do evento para componentes do rendimento (auditoria-fiscal
+    10: preferência pela data de recebimento informada; a data da operação
+    só vale quando o recebimento coincide — default explícito do capture)."""
+    return data.get("income_receipt_date") or data["trade_date"]
 
 
 class EventService:
@@ -84,21 +84,34 @@ class EventService:
 
         manual_rate = data.pop("ptax_manual", None)
         manual_reason = data.pop("ptax_reason", None)
+        # Auditoria-fiscal 10: fato gerador do rendimento é o RECEBIMENTO.
+        # Default explícito no capture (crédito no mesmo dia da operação) —
+        # o resolver nunca presume trade_date silenciosamente.
+        if etype in ("DIVIDEND", "JUROS"):
+            data["income_receipt_date"] = data.get("income_receipt_date") or data["trade_date"]
+        ptax_date = data.get("income_receipt_date") or data["trade_date"]
         if manual_rate:
             rate = self.ptax.override(
-                data["trade_date"], Decimal(str(manual_rate)), manual_reason or ""
+                ptax_date, Decimal(str(manual_rate)), manual_reason or ""
             ).rate
         else:
-            rate = self._ptax_rate(data["trade_date"])
+            rate = self._ptax_rate(ptax_date)
         if data.get("corrects"):
             data["corrects"].active = False
             data["corrects"].save()
 
         tax = data.get("tax_usd") or Decimal(0)
         pagamento = self._dados_imposto_exterior(data, tax)
-        fields = {k: v for k, v in data.items() if k not in ("amount_usd", "corrects", "per_share_usd", *FOREIGN_TAX_FIELDS)}
+        fields = {k: v for k, v in data.items() if k not in ("amount_usd", "corrects", "per_share_usd", "tax_usd", *FOREIGN_TAX_FIELDS)}
         fields["fee_usd"] = fields.get("fee_usd") or Decimal(0)
-        fields["tax_usd"] = fields.get("tax_usd") or Decimal(0)
+        # Auditoria-fiscal 12: estado declarado do imposto exterior —
+        # com pagamento registrado é RECORDED; senão, só o que o usuário
+        # DECLARAR (NO_WITHHOLDING / REVIEW_PENDING) ou UNDECLARED (que
+        # bloqueia a reconciliação — nunca retenção zero presumida).
+        if etype in ("DIVIDEND", "JUROS"):
+            fields["foreign_tax_state"] = (
+                "RECORDED" if pagamento else (data.get("foreign_tax_state") or "UNDECLARED")
+            )
         with transaction.atomic():
             evento = FinancialEvent.objects.create(
                 **fields,
@@ -175,7 +188,7 @@ class BrokerTransferService:
             cost_usd = (avg_usd * quantity).quantize(Decimal("0.00000001"))
             cost_brl = (pos["cost_brl_total"] * quantity / pos["quantity"]).quantize(Decimal("0.00000001"))
             base = dict(asset=asset, quantity=quantity, price_usd=None,
-                        fee_usd=Decimal(0), tax_usd=Decimal(0),
+                        fee_usd=Decimal(0),
                         transfer_pair_id=pair_id, trade_date=trade_date)
             out = {**base, "event_type": "BROKER_TRANSFER_OUT", "account": out_account}
             inp = {**base, "event_type": "BROKER_TRANSFER_IN", "account": in_account}
@@ -186,11 +199,11 @@ class BrokerTransferService:
                 raise ValueError("informe quantity (ativo) ou amount_usd (caixa).")
             out = dict(event_type="BROKER_TRANSFER_OUT", account=out_account,
                        trade_date=trade_date, amount_usd=amount_usd,
-                       fee_usd=Decimal(0), tax_usd=Decimal(0),
+                       fee_usd=Decimal(0),
                        transfer_pair_id=pair_id)
             inp = dict(event_type="BROKER_TRANSFER_IN", account=in_account,
                        trade_date=trade_date, amount_usd=amount_usd,
-                       fee_usd=Decimal(0), tax_usd=Decimal(0),
+                       fee_usd=Decimal(0),
                        transfer_pair_id=pair_id)
             out["amount_brl"] = inp["amount_brl"] = (amount_usd * rate).quantize(Decimal("0.00000001"))
         out["fx_rate"] = inp["fx_rate"] = rate

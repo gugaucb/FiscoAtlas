@@ -36,6 +36,10 @@ def pagamento(db):
 
 def _form(pagamento, **campos):
     payload = {
+        # ticket 04: tax_usd e country_code agora são campos editáveis do
+        # formulário e entram no payload como qualquer outro fato
+        "tax_usd": pagamento.tax_usd,
+        "country_code": pagamento.country_code,
         "foreign_tax_payment_date": "2026-03-12",
         "jurisdiction_level": pagamento.jurisdiction_level,
         "tax_type": pagamento.tax_type,
@@ -101,6 +105,8 @@ def test_trilha_acumula_entradas(pagamento):
 
 def test_view_editar_grava_trilha(client, pagamento):
     resp = client.post(f"/imposto-exterior/{pagamento.pk}/editar/", {
+        "tax_usd": pagamento.tax_usd,
+        "country_code": pagamento.country_code,
         "foreign_tax_payment_date": "2026-03-15",
         "jurisdiction_level": pagamento.jurisdiction_level,
         "tax_type": pagamento.tax_type,
@@ -146,6 +152,8 @@ def test_ptax_compra_manual_grava_override_e_trilha(client, pagamento):
     from fx.models import PtaxRate
     with mock.patch("fx.service.PtaxService.get_rate", return_value=mock.Mock(rate=Decimal("4.80"))):
         resp = client.post(f"/imposto-exterior/{pagamento.pk}/editar/", {
+            "tax_usd": pagamento.tax_usd,
+            "country_code": pagamento.country_code,
             "foreign_tax_payment_date": "2026-03-12",
             "jurisdiction_level": pagamento.jurisdiction_level,
             "tax_type": pagamento.tax_type,

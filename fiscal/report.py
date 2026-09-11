@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from fiscal.cbe import CbeService
 from fiscal.darf import DarfGuideService
@@ -11,6 +11,7 @@ from fiscal.models import AnnualAssessment, Profile
 from fx.service import PtaxService
 from ledger.cash import INFLOWS, CashLedgerService
 from ledger.models import Asset, BrokerAccount, FinancialEvent
+from ledger.ownership import OwnershipService
 from ledger.position import PositionService
 
 # Códigos da ficha Bens e Direitos (DIRPF) — a confirmar com contador
@@ -29,19 +30,32 @@ class ReportService:
 
     def _dirpf_schema(self) -> dict:
         """RF-ARQ-002/003: códigos por exercício com trava de homologação.
-        Sem cadastro → defaults estáticos (homologado por definição)."""
+        Auditoria-fiscal 11: sem schema configurado o relatório NÃO se
+        autodenomina homologado — defaults estáticos viram PRELIMINAR
+        (com aviso). HOMOLOGADO só com schema explicitamente homologado.
+        A apuração matemática continua funcionando sem schema."""
         from fiscal.models import DirpfSchema
         schema = DirpfSchema.objects.filter(filing_year=self.year).first()
         if schema is None:
             return {
                 "groups": GRUPO_CODIGO, "countries": COUNTRY_RFB,
-                "schema_version": "default", "status": "HOMOLOGADO",
+                "schema_version": "default", "status": "PRELIMINAR",
+                "aviso": (
+                    "Nenhum schema de códigos DIRPF cadastrado para o "
+                    f"exercício {self.year + 1}: o relatório usa defaults "
+                    "estáticos e é PRELIMINAR. Cadastre e homologue o schema "
+                    "em DirpfSchema para o status HOMOLOGADO."
+                ),
             }
         return {
             "groups": {**GRUPO_CODIGO, **(schema.groups or {})},
             "countries": {**COUNTRY_RFB, **(schema.countries or {})},
             "schema_version": schema.schema_version,
             "status": "HOMOLOGADO" if schema.is_homologated else "PRELIMINAR",
+            "aviso": "" if schema.is_homologated else (
+                f"Schema {schema.schema_version} não homologado — relatório "
+                "PRELIMINAR."
+            ),
         }
 
     def build(self) -> dict:
@@ -65,7 +79,9 @@ class ReportService:
                 "balance_usd": balance_usd,
                 "balance_brl": cash_brl,
             })
-            acc["cash_brl"] = cash_brl
+            # auditoria-fiscal 06: caixa atribuível também passa pela fatia
+            # do contribuinte (mesma fonte de verdade)
+            acc["cash_brl"] = (cash_brl * OwnershipService.taxpayer_share_factor(account)).quantize(Decimal("0.01"))
             if not account.is_interest_bearing:
                 # Variação cambial de caixa não remunerado é isenta
                 # (IN RFB 2180/2024, art. 3º): saldo a PTAX 31/12 − custo BRL
@@ -90,18 +106,25 @@ class ReportService:
                 # a atribuição proporcional mesmo sem posição remanescente
                 div_events = FinancialEvent.objects.filter(
                     account=account, asset=asset, active=True,
-                    event_type__in=("DIVIDEND", "JUROS"), trade_date__year=self.year,
+                    event_type__in=("DIVIDEND", "JUROS"),
+                ).filter(
+                    Q(income_receipt_date__year=self.year)
+                    | Q(income_receipt_date__isnull=True, trade_date__year=self.year)
                 ).prefetch_related("foreign_tax_payments")
                 dividends_brl = Decimal(0)
                 withholding_brl = Decimal(0)
                 ptax_service = PtaxService()
                 for ev in div_events:
                     fx = ev.fx_rate or Decimal(0)
-                    dividends_brl += (ev.amount_usd + ev.tax_usd) * fx
-                    # imposto pago no exterior: PTAX COMPRA na data do pagamento
-                    pagamento = ev.foreign_tax_payments.first()
-                    fx_tax = fx_imposto_exterior(ev, pagamento, ptax_service)
-                    withholding_brl += ev.tax_usd * fx_tax
+                    # Auditoria-fiscal 04: gross = líquido + soma de TODOS os
+                    # pagamentos de imposto do evento (sem `.first()`)
+                    pagamentos = list(ev.foreign_tax_payments.all())
+                    gross_usd = ev.amount_usd + sum((p.tax_usd for p in pagamentos), Decimal(0))
+                    dividends_brl += gross_usd * fx
+                    # imposto pago no exterior: PTAX COMPRA na data de cada pagamento
+                    for pagamento in pagamentos:
+                        fx_tax = fx_imposto_exterior(ev, pagamento, ptax_service)
+                        withholding_brl += pagamento.tax_usd * fx_tax
                 gains_brl = Decimal(0)
                 losses_brl = Decimal(0)
                 for r in PositionService().realized(account, asset, until=yearend):
@@ -110,6 +133,13 @@ class ReportService:
                             gains_brl += r["gain_brl"]
                         else:
                             losses_brl += -r["gain_brl"]
+                # auditoria-fiscal 06: MESMA fonte de verdade que o engine —
+                # os fatos exibidos já são atribuídos ao contribuinte
+                fator = OwnershipService.taxpayer_share_factor(account)
+                dividends_brl *= fator
+                withholding_brl *= fator
+                gains_brl *= fator
+                losses_brl *= fator
                 acc["income_brl"] += (dividends_brl + gains_brl - losses_brl).quantize(Decimal("0.01"))
                 acc["custody_brl"] += pos["cost_brl_total"]
                 if pos["quantity"]:
@@ -155,18 +185,19 @@ class ReportService:
         profile = Profile.objects.first()
         snapshot = AnnualAssessment.objects.filter(year=self.year).first()
         prev_snapshot = AnnualAssessment.objects.filter(year=self.year - 1).first()
-        # RF-PER-004: demonstração da fatia proporcional do contribuinte
+        # RF-PER-004: demonstração da fatia do contribuinte. Auditoria-fiscal
+        # 06: a atribuição já foi aplicada no cálculo (OwnershipService) —
+        # aqui é só exibição, sem re-dividir (nada de dupla atribuição).
         ownership_attribution = []
         for account in BrokerAccount.objects.filter(active=True):
-            share = account.ownership_share
             acc = attrib.get(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0), "cash_brl": Decimal(0)})
             ownership_attribution.append({
                 "account": account,
                 "ownership_type": account.ownership_type,
-                "share_pct": share,
-                "income_brl_attrib": (acc["income_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
-                "custody_brl_attrib": (acc["custody_brl"] * share / Decimal(100)).quantize(Decimal("0.01")),
-                "cash_brl_attrib": (acc.get("cash_brl", Decimal(0)) * share / Decimal(100)).quantize(Decimal("0.01")),
+                "share_pct": account.ownership_share,
+                "income_brl_attrib": acc["income_brl"].quantize(Decimal("0.01")),
+                "custody_brl_attrib": acc["custody_brl"].quantize(Decimal("0.01")),
+                "cash_brl_attrib": acc.get("cash_brl", Decimal(0)).quantize(Decimal("0.01")),
             })
         return {
             "ownership_attribution": ownership_attribution,
@@ -178,6 +209,7 @@ class ReportService:
             "dirpf": {
                 "schema_version": dirpf["schema_version"],
                 "status": dirpf["status"],
+                "aviso": dirpf.get("aviso", ""),
             },
             "closing": {
                 "is_closed": snapshot is not None,
