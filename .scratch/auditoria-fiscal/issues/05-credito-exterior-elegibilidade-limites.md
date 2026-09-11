@@ -12,7 +12,7 @@ espalhada entre engine e validador.
 
 **Blocked by:** 04 (ForeignTaxPayment como fonte única).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Retenção estrangeira > 15% NÃO bloqueia mais o fechamento (teste: retenção 30%, fechamento passa — falha no código atual)
 - [ ] Relatório distingue: pago / elegível / aproveitado / não aproveitado (exemplo 30 pago, 15 IR devido → 15 usado, 15 não usado)
