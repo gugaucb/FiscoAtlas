@@ -15,7 +15,7 @@ regras fiscais — e só então apura e confirma o snapshot.
 
 **Blocked by:** 01 (Importador sem omissão silenciosa), 04 (ForeignTaxPayment como fonte única).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Serviço de reconciliação separado do validador de fechamento (regras de importação/custódia não entram no validator fiscal)
 - [ ] Pendência de importação com evento no ano-calendário → bloqueia fechamento (teste que falha no código atual — hoje nem existem pendências)

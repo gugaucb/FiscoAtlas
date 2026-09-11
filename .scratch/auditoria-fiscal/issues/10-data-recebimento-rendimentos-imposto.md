@@ -11,7 +11,7 @@ falha explicitamente (nunca fallback silencioso para a trade_date).
 
 **Blocked by:** 04 (ForeignTaxPayment como fonte única).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Rendimentos: data fiscal = data de recebimento (novo campo opcional no evento; teste: dividendo 31/12 creditado 02/01 → ano do recebimento — falha no código atual)
 - [ ] Imposto pago no exterior usa a própria data de pagamento (teste: crédito pago 02/01 → ano do pagamento)

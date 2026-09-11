@@ -14,7 +14,7 @@ Testes com os dois cenários cruzados (alto em março/baixo em dezembro e vice-v
 
 **Blocked by:** 06 (Titularidade — OwnershipService central).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Compra reduz o caixa e não duplica o patrimônio (teste que falha no código atual)
 - [ ] Caixa vem do ledger (considera BUY, SELL, dividendos, juros, taxas) por data-base

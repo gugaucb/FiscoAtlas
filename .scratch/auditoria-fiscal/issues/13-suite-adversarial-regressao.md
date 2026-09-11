@@ -25,7 +25,7 @@ anterior** à correção correspondente:
 
 **Blocked by:** 03, 04, 05, 06, 07, 08, 09 (suíte exercita os cenários corrigidos).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Suíte dedicada criada (ex.: testes de auditoria fiscal separados dos testes unitários existentes)
 - [ ] Todos os cenários da matriz cobertos com valores esperados explícitos calculados à mão
