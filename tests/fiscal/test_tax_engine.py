@@ -43,7 +43,8 @@ def test_full_year_computation(setup):
             quantity=Decimal(10), price_usd=Decimal(110), fee_usd=Decimal(1))
     _record(acct, event_type="DIVIDEND", asset=asset, trade_date=date(2026, 6, 15),
             quantity=Decimal(10), per_share_usd=Decimal(1), tax_usd=Decimal(1),
-            foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL")
+            foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL",
+            tax_type="WITHHOLDING_INCOME_TAX")  # ticket 05: fato tributário documentado
     result = _compute(TaxEngine(2026))
     # ganho venda: 10*110-1 = 1099 - custo 1001 (fee compõe custo) = 98 USD = 490 BRL
     # dividendo bruto: 10 USD = 50 BRL → renda 540 BRL

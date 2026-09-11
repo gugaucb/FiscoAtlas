@@ -9,14 +9,9 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
-from fiscal.engine import TaxEngine
 from fiscal.models import AnnualAssessment, Profile
 from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
-
-# RF-FTC (Lei 14.754/2023, art. 4º): retenção estrangeira compensa até o IR
-# devido; o excedente NÃO gera carryforward — bloqueia para revisão.
-LIMITE_RETENCAO = Decimal("0.15")
 
 
 class AnnualClosingValidator:
@@ -139,30 +134,27 @@ class AnnualClosingValidator:
 
     # ------------------------------------------------------------ RF-VAL-008/009
     def _checar_credito_exterior(self):
-        try:
-            resultado = TaxEngine(self.year).compute()
-        except ValidationError:
-            # o engine já reportou bloqueios próprios (residência, regime);
-            # a verificação de crédito não acrescenta nada aqui.
-            return
-        retencao_total = Decimal(0)
-        for d in resultado["detail"]:
-            wh = d.get("withholding_brl", Decimal(0))
-            if not wh:
-                continue
-            bruto = d.get("gross_brl", Decimal(0))
-            if bruto > 0 and wh > bruto * LIMITE_RETENCAO:
-                self.violations.append(
-                    f"Imposto retido no exterior ({d['event']}) excede 15% do "
-                    "rendimento bruto individual (RF-VAL-008). Revise o valor "
-                    "documentado no extrato."
-                )
-            retencao_total += wh
-        creditado = resultado["withholding_credit_brl"]
-        if creditado < retencao_total:
+        """Ticket 05 (auditoria-fiscal): retenção estrangeira > 15% do bruto é
+        legítima (ex.: 30% dos EUA) e NÃO bloqueia — a lei limita o crédito
+        aproveitável ao IR devido, e o excedente é segregado no relatório como
+        não aproveitado (pago / elegível / aproveitado / não aproveitado). O
+        único bloqueio aqui é pagamento com tratamento fiscal desconhecido
+        (UNKNOWN), que exige classificação do usuário antes do fechamento."""
+        from fiscal.foreign_tax import ForeignTaxCreditService
+        from ledger.models import ForeignTaxPayment
+        pagamentos = list(
+            ForeignTaxPayment.objects.filter(
+                financial_event__active=True,
+                financial_event__trade_date__year=self.year,
+            ).select_related("financial_event")
+        )
+        desconhecidos = [p for p in pagamentos if not ForeignTaxCreditService.is_eligible(p)
+                         and ForeignTaxCreditService.eligibility(p)[1].startswith("UNKNOWN")]
+        for p in desconhecidos:
             self.violations.append(
-                "O crédito de imposto no exterior foi limitado ao IR devido — o "
-                "excedente não gera carryforward para anos seguintes "
-                "(RF-VAL-009; Lei 14.754/2023, art. 4º). Revise os documentos "
-                "do imposto retido antes de fechar o ano."
+                f"Imposto pago no exterior ({p}) com fatos fiscais desconhecidos "
+                f"(jurisdição/tipo/evidência) — classifique em "
+                f"/imposto-exterior/{p.pk}/editar/ antes de fechar o ano. "
+                "Sem classificação explícita, o crédito não é aproveitado "
+                "(sem regra fiscal silenciosa)."
             )

@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from fiscal.date_rules import TaxDateResolver
+from fiscal.foreign_tax import ForeignTaxCreditService
 from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
 from fx.service import PtaxService
@@ -16,12 +17,6 @@ ZERO = Decimal("0.00")
 # Regimes tributários não cobertos pela apuração de aplicação financeira
 # direta (RF-AST-009/RF-VAL-002): exigem regime próprio.
 BLOCKED_ASSET_TYPES = ("CONTROLLED_ENTITY", "TRUST", "UNKNOWN")
-
-# RF-FTC-002/003 (Lei 14.754/2023, art. 4º): a compensação decorre de
-# reciprocidade de tratamento para tributos FEDERAIS sobre a renda.
-# Imposto estadual/municipal (ex.: State/Local Income Tax dos EUA) não é
-# elegível; países fora da lista também não geram crédito.
-RECIPROCITY_COUNTRIES = {"US"}
 
 
 def _pagamentos_por_evento(events):
@@ -197,12 +192,9 @@ class TaxEngine:
                     wh = (pagamento.tax_usd * fx_tax * fator).quantize(Decimal("0.01"))
                     fx_tax_last = fx_tax
                     tax_date_last = pagamento.foreign_tax_payment_date
-                    # elegibilidade (RF-FTC-002/003): por pagamento — só tributo
-                    # federal de país com reciprocidade gera crédito.
-                    if (
-                        pagamento.jurisdiction_level == "FEDERAL"
-                        and pagamento.country_code in RECIPROCITY_COUNTRIES
-                    ):
+                    # elegibilidade (RF-FTC-002/003): por pagamento, decisão
+                    # centralizada no ForeignTaxCreditService (ticket 05).
+                    if ForeignTaxCreditService.is_eligible(pagamento):
                         eligible_wh += wh
                     else:
                         ineligible_wh += wh

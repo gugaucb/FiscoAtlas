@@ -151,37 +151,47 @@ def test_venda_integral_da_posicao_passa(ambiente):
     AnnualClosingValidator(2026).validate_or_raise()  # não levanta
 
 
-# ------------------------------------------------- crédito > 15% do bruto
+# ------------------------------------------------- crédito exterior (ticket 05)
 
-def test_bloqueia_imposto_exterior_acima_de_15_porcento(ambiente):
+def test_retencao_30_porcento_nao_bloqueia_fechamento(ambiente):
+    """Ticket 05 (auditoria-fiscal): os testes antigos bloqueavam retenção
+    > 15% do bruto e crédito limitado ao IR (excesso sem carryforward) —
+    substituídos porque uma retenção estrangeira maior (ex.: 30% dos EUA) é
+    legítima; a lei limita o crédito aproveitável ao IR devido e o excedente
+    é apenas não aproveitado (sem carryforward). Fechamento passa."""
     conta = ambiente
-    # bruto = 10 × 1 + 10 = US$ 20; retido US$ 10 = 50% > 15%
+    # bruto = 10 × 1 + 10 = US$ 20; retido US$ 10 = 50% do bruto
     _dividendo_com_imposto(conta, tax_usd=Decimal(10))
-    with pytest.raises(ValidationError, match="15%"):
-        AnnualClosingValidator(2026).validate_or_raise()
-
-
-def test_imposto_ate_15_porcento_passa(ambiente):
-    conta = ambiente
-    # bruto = 10×2 + 2 = US$ 22; retido 2 = 9% ≤ 15%
-    _dividendo_com_imposto(conta, tax_usd=Decimal(2), per_share=Decimal(2))
     AnnualClosingValidator(2026).validate_or_raise()  # não levanta
 
 
-# ------------------------------------------------- carryforward de crédito
-
-def test_bloqueia_carryforward_de_credito_exterior(ambiente):
-    """Crédito retido acima do IR devido não é compensável em anos seguintes
-    (Lei 14.754/2023): se o imposto estrangeiro exceder o teto do ano, o
-    fechamento é bloqueado para revisão documental."""
+def test_retencao_30_porcento_relatorio_segrega_aproveitado(ambiente):
+    """Exemplo do auditor (PTAX 5): bruto 100 USD = R$ 500; imposto pago
+    30 USD = R$ 150; IR devido 15% = R$ 75 → pago = 150, elegível = 150,
+    aproveitado = 75, não aproveitado = 75 (descartado — sem carryforward)."""
+    from fiscal.report import ReportService
     conta = ambiente
-    # rendimento bruto pequeno com retenção grande: crédito limitado ao IR
-    _dividendo_com_imposto(conta, tax_usd=Decimal("2.5"), per_share=Decimal("1"))
-    # bruto 35 BRL → IR 5,25; retenção 12,50 BRL > teto 5,25 → excesso
-    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
-        resultado = TaxEngine(2026).compute()
-    assert resultado["withholding_credit_brl"] < Decimal("12.50")
-    with pytest.raises(ValidationError, match="carryforward|teto"):
+    _dividendo_com_imposto(conta, tax_usd=Decimal(30), per_share=Decimal(10))
+    with mock.patch("fiscal.report.PtaxService.get_rate",
+                    return_value=mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))):
+        report = ReportService(2026).build()
+    linha = report["income"]["credit_detail"][0]
+    assert linha["withholding_brl"] == Decimal("150.00")
+    assert linha["limit_brl"] == Decimal("75.00")
+    assert linha["credit_used_brl"] == Decimal("75.00")
+    assert linha["credit_unused_brl"] == Decimal("75.00")
+    assert linha["credit_eligible"] is True
+
+
+def test_pagamento_unknown_bloqueia_fechamento_com_orientacao(ambiente):
+    """Único bloqueio do crédito exterior: tratamento fiscal desconhecido
+    (UNKNOWN) — exige classificação explícita, sem regra silenciosa."""
+    conta = ambiente
+    ev = _dividendo_com_imposto(conta, tax_usd=Decimal(10))
+    pagamento = ev.foreign_tax_payments.get()
+    pagamento.jurisdiction_level = "UNKNOWN"
+    pagamento.save()
+    with pytest.raises(ValidationError, match="classifique"):
         AnnualClosingValidator(2026).validate_or_raise()
 
 
@@ -206,8 +216,14 @@ def test_violacoes_sao_agregadas(ambiente):
 # ------------------------------------------------- plugado na view
 
 def test_close_year_view_bloqueado(ambiente, client):
+    """Ticket 05: o bloqueio antigo era retenção > 15% — substituído porque
+    retenção maior é legítima. O bloqueio passa a ser pagamento com
+    tratamento fiscal desconhecido (UNKNOWN)."""
     conta = ambiente
-    _dividendo_com_imposto(conta, tax_usd=Decimal(10))
+    ev = _dividendo_com_imposto(conta, tax_usd=Decimal(10))
+    pagamento = ev.foreign_tax_payments.get()
+    pagamento.jurisdiction_level = "UNKNOWN"
+    pagamento.save()
     resp = client.post("/apuracao/2026/fechar/")
     assert resp.status_code == 302  # redireciona de volta com mensagens de erro
     assert not AnnualAssessment.objects.filter(year=2026, confirmed=True).exists()

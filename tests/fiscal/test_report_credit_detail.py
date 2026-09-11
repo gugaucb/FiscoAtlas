@@ -21,9 +21,11 @@ def setup(db, residente):
     aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
         # dividendo: bruto 7 USD (35 BRL), IR EUA 2 USD (10 BRL) — limite 15% = 5,25
+        # ticket 05: o fato tributário (tax_type) agora é checado pela
+        # elegibilidade central — o cenário o documenta explicitamente
         EventService().record(dict(account=acct, event_type="DIVIDEND", asset=aapl,
                                    trade_date=date(2026, 5, 15), quantity=Decimal(7),
-                                   per_share_usd=Decimal(1), tax_usd=Decimal(2), foreign_tax_payment_date=date(2026, 5, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL"))
+                                   per_share_usd=Decimal(1), tax_usd=Decimal(2), foreign_tax_payment_date=date(2026, 5, 15), date_evidence_source="BROKER_STATEMENT", country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX"))
     return acct
 
 
