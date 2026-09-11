@@ -57,15 +57,26 @@
   <a href="?ptax=editar">editar</a></em></p>
 {% if report.darf %}
 <div class="card" role="status">
-  <h2>DARF {{ report.darf.codigo }} — {{ report.darf.descricao }}</h2>
-  {% if report.darf.dispensado %}
+  <h2>DARF {{ report.darf.codigo|default:"—" }} — {{ report.darf.descricao }}
+    {% if report.darf.status == "HOMOLOGADO" %}
+    <span class="badge ok">Regra homologada</span>
+    {% else %}
+    <span class="badge" style="background:#fef3c7;color:#92400e">PRELIMINAR</span>
+    {% endif %}
+  </h2>
+  {% if report.darf.aviso %}
+  <p role="alert"><strong>Atenção:</strong> {{ report.darf.aviso }}</p>
+  {% endif %}
+  {% if report.darf.adiado %}
   <p>{{ report.darf.mensagem }}</p>
   {% else %}
   <p>
     <strong>Cota única:</strong> R$ {{ report.darf.cota_unica.valor }} —
-    vencimento {{ report.darf.cota_unica.vencimento|date:"d/m/Y" }}.<br>
+    {% if report.darf.cota_unica.vencimento %}vencimento {{ report.darf.cota_unica.vencimento|date:"d/m/Y" }}.{% else %}sem vencimento definitivo (regra não homologada).{% endif %}<br>
+    {% if report.darf.parcelamento %}
     <strong>Parcelamento:</strong> até {{ report.darf.parcelamento.n_quotas }} quotas de
     R$ {{ report.darf.parcelamento.valor_quota }} ({{ report.darf.parcelamento.juros }}).
+    {% endif %}
   </p>
   {% endif %}
 </div>
