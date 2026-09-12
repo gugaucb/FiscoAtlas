@@ -114,7 +114,7 @@ Vamos acompanhar um dividendo do início ao fim:
 3. **Conversão para reais:** o sistema busca a cotação **PTAX Venda** do BCB em 05/03/2026. Suponha R$ 5,50 → o dividendo vale **R$ 5.500,00**.
 4. **Cálculo do imposto:** 15% × R$ 5.500,00 = **R$ 825,00** — este é o imposto devido sobre o dividendo.
 5. **Acumulação anual:** todos os rendimentos e ganhos do ano-calendário somam-se numa base única, e o sistema aplica os 15% sobre o total (compensando perdas — ver [Apuração Anual](#14-apuração-anual)).
-6. **DARF:** o imposto é pago via DARF código 0211, vencendo no último dia útil de abril do ano seguinte. Valores de DARF abaixo de R$ 10,00 são dispensados.
+6. **DARF:** o imposto é pago via DARF código 0211, com vencimento definido pela regra de preenchimento do exercício (`FilingRule` do ano seguinte — por padrão, o último dia útil de abril). Enquanto não houver regra homologada para o exercício, o vencimento aparece como PRELIMINAR. Valores de DARF abaixo de R$ 10,00 são **adiados** (acumulados para o período seguinte), não extintos (art. 938, §§ 4º e 5º, RIR/2018).
 
 ### 2.4 O crédito de imposto exterior
 
@@ -126,7 +126,7 @@ Você não paga o imposto duas vezes. Como a corretora americana já reteve US$ 
 **Caso prático:** dividendo bruto de R$ 5.500, IR devido de R$ 825, retenção federal convertida (PTAX *compra* da data do pagamento) de R$ 550.
 → Crédito aproveitado: R$ 550. IR a pagar via DARF: R$ 825 − R$ 550 = **R$ 275**.
 
-> ⚠️ Se a retenção fosse de 30% (R$ 1.650), só R$ 825 seriam aproveitados — os outros R$ 825 são perdidos. Retenções acima de 15% do rendimento bruto também **bloqueiam o fechamento do ano** (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado)).
+> ⚠️ Se a retenção fosse de 30% (R$ 1.650), o crédito ficaria limitado ao teto de 15% do bruto (R$ 825) — os outros R$ 825 são descartados (sem restituição nem carry-forward de crédito, Lei 14.754/2023, art. 4º). A retenção acima de 15% é um lançamento **válido** e **não bloqueia** o fechamento do ano — só reduz o crédito aproveitável.
 
 ### 2.5 Perdas: compensação carry-forward
 
@@ -525,7 +525,6 @@ O botão **Fechar ano** executa o `AnnualClosingValidator` com 20+ validações:
 | Perfil incompleto | Dados do contribuinte devem estar preenchidos |
 | Regra não confirmada | TaxRule deve estar `confirmed=True` |
 | Transferências solitárias | Toda transferência de custódia deve ter as duas pontas (IN/OUT) |
-| Retenção acima do limite | Imposto pago no exterior não pode exceder 15% do rendimento bruto |
 | Crédito não compensável | Não pode haver crédito exterior aproveitado acima do IR devido (sem carryforward de crédito — Lei 14.754/2023, art. 4º) |
 | Restituição retroativa | Estorno de imposto referente a ano já fechado exige retificação da declaração de origem |
 
@@ -683,7 +682,7 @@ Em **Novo lançamento**, registre as operações na ordem cronológica em que oc
 
 ![Dividendo preenchido](images/10-dividendo-preenchido.png)
 
-> ⚠️ **Atenção ao teto de 15%:** para que o fechamento do ano seja aprovado, o imposto retido no exterior deve ficar dentro do teto de 15% do rendimento bruto (Lei 14.754/2023, art. 5º) — ex.: dividendo de US$ 200 com IR de US$ 20 (10%). Uma retenção de 30% é válida como lançamento, mas o fechamento será **bloqueado** pelo validador (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado)).
+> ⚠️ **Atenção ao teto de 15%:** a retenção acima de 15% do rendimento bruto é um lançamento **válido** e **não bloqueia** o fechamento (Lei 14.754/2023, art. 4º) — mas o crédito fica limitado ao teto de 15% por rendimento: ex. dividendo de US$ 1.000 com IR de US$ 300 (30%) aproveita só US$ 150 (15%); o excedente é descartado, sem restituição nem carry-forward.
 
 ![Venda AAPL](images/11-venda-aapl.png)
 
@@ -759,7 +758,7 @@ Baixe o **PDF** do relatório e a **memória de cálculo** para os comprovantes.
 | **Compensação de perdas** | Carry-forward multianual (FIFO) |
 | **Crédito de imposto** | Limitado ao IR devido; Federal + reciprocidade |
 | **CBE** | Capitais ≥ US$ 1M: anual; ≥ US$ 100M: trimestral |
-| **DARF 0211** | Vencimento: último dia útil de abril; dispensa < R$ 10 |
+| **DARF 0211** | Vencimento pela FilingRule do exercício (padrão: último dia útil de abril); < R$ 10 = adiamento ao período seguinte (art. 938, §§ 4º/5º, RIR/2018) |
 | **Altas rendas** | Lei 15.270/2025: renda global > R$ 600k (a partir de 2026) |
 
 ### Regras de PTAX por componente
@@ -848,7 +847,7 @@ Ao clicar em **Fechar ano**, o `AnnualClosingValidator` executa todas as valida�
 | Perfil incompleto | Dados do contribuinte ausentes | Nome ou CPF vazios | [Perfil](#7-perfil-do-contribuinte): preencha nome completo e CPF |
 | Regra não confirmada | TaxRule não confirmada | Regra tributária do ano ainda sem confirmação | Confirme a TaxRule na tela de Apuração antes de fechar o ano |
 | Transferências solitárias | Transferência sem contraparte | `BROKER_TRANSFER_IN` sem o `OUT` correspondente (ou vice-versa) | Registre as duas pontas da transferência de custódia — a camada de serviço exige o par |
-| Retenção acima do limite | Imposto exterior > 15% do rendimento | Retenção na fonte acima de 15% do rendimento bruto (ex.: 30% retido sobre dividendo) | ⚠️ O lançamento é válido, mas o **fechamento é bloqueado** (Lei 14.754/2023, art. 5º). Verifique o valor lançado; se estiver correto, o excedente acima de 15% não gera crédito — avalie com seu contador |
+| Retenção acima do limite | Imposto exterior > 15% do rendimento | Retenção na fonte acima de 15% do rendimento bruto (ex.: 30% retido sobre dividendo) | O lançamento é válido e **não bloqueia** o fechamento (Lei 14.754/2023, art. 4º) — o crédito fica limitado ao teto de 15% por rendimento e o excedente é descartado. Aparece no relatório como "Crédito não aproveitado" |
 | Crédito não compensável | Crédito acima do IR devido | Crédito exterior aproveitado excedendo o imposto brasileiro | Não há carry-forward de crédito (Lei 14.754/2023, art. 4º). Revise os lançamentos de retenção; o crédito é limitado ao IR devido |
 | Restituição retroativa | Estorno em ano fechado | `WITHHOLDING_REFUND` referente a imposto de ano já fechado | Exige retificação da declaração de origem — não é possível incluir no ano corrente; consulte seu contador |
 
@@ -870,7 +869,7 @@ Para minimizar surpresas, antes de clicar em **Fechar ano** confirme:
 2. Todos os ativos com natureza jurídica definida (nenhum `UNKNOWN`)
 3. Nenhuma venda acima da posição possuída na data
 4. Todas as transferências de custódia com as duas pontas
-5. Retenções exteriores dentro do teto de 15% do rendimento bruto
+5. Retenções exteriores classificadas (jurisdição federal, tipo e caráter definitivo) — retenção acima do teto de 15% é válida e não bloqueia; só reduz o crédito aproveitável
 6. TaxRule do ano confirmada
 7. [Posições](#11-posições) e [Caixa](#12-caixa) conferidos com o extrato da corretora
 

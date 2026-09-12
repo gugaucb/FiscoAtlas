@@ -106,7 +106,7 @@ def render_pdf(report: dict) -> bytes:
     story.append(table)
     story.append(Spacer(1, 12))
 
-    story.append(Paragraph("6 — CRÉDITO DE IMPOSTO PAGO NO EXTERIOR (Lei 14.754/2023, art. 5º)", h2))
+    story.append(Paragraph("6 — CRÉDITO DE IMPOSTO PAGO NO EXTERIOR (Lei 14.754/2023, art. 4º)", h2))
     credit_rows = [["Rendimento", "Bruto BRL", "Limite 15%", "IR exterior", "Crédito usado", "Não aproveitado"]]
     for r in inc.get("credit_detail", []):
         credit_rows.append([
