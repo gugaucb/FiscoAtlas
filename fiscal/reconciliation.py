@@ -57,16 +57,32 @@ class AnnualReconciliationService:
 
     # ------------------------------------------------------------ (1) importação
     def _checar_importacoes(self):
-        for issue in ImportIssue.objects.filter(status=ImportIssue.STATUS_PENDING).select_related("batch"):
+        # Achado P1 do auditor (17): RESOLVED_IMPORTED cujo evento vinculado
+        # foi corrigido (desativado) — ou sem evento vinculado — volta a ser
+        # bloqueante até ser re-vinculado ao evento substituto. A regra é
+        # computada aqui; o status gravado não é mutado.
+        issues = ImportIssue.objects.select_related("batch", "resolved_event")
+        for issue in issues:
+            if not issue.esta_aberta:
+                continue
             data_evento = _parse_data_documento(issue.raw_data)
             if data_evento is None or data_evento.year == self.year:
                 quando = f"em {data_evento:%d/%m/%Y}" if data_evento else "com data ilegível"
-                self.issues.append(
-                    f"Pendência de importação: linha {issue.line_number} do lote "
-                    f"{issue.batch_id} ('{issue.raw_action or 'ação vazia'}') "
-                    f"referente a evento {quando} no ano-calendário {self.year} — "
-                    "resolva (lançamento manual ou ignora com justificativa) antes de fechar o ano."
-                )
+                if issue.status == ImportIssue.STATUS_PENDING:
+                    self.issues.append(
+                        f"Pendência de importação: linha {issue.line_number} do lote "
+                        f"{issue.batch_id} ('{issue.raw_action or 'ação vazia'}') "
+                        f"referente a evento {quando} no ano-calendário {self.year} — "
+                        "resolva (lançamento manual ou ignora com justificativa) antes de fechar o ano."
+                    )
+                else:
+                    self.issues.append(
+                        f"Pendência de importação: linha {issue.line_number} do lote "
+                        f"{issue.batch_id} estava resolvida, mas o evento vinculado "
+                        f"foi corrigido (desativado) ou não existe mais — re-vinque o "
+                        f"lançamento substituto em /contas/{issue.batch.account_id}/pendencias/ "
+                        "antes de fechar o ano."
+                    )
 
     # ------------------------------------------------------------ (2) caixa
     def _checar_caixa(self):

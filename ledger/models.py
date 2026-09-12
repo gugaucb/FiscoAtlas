@@ -334,11 +334,26 @@ class ImportIssue(models.Model):
     class Meta:
         ordering = ["batch", "line_number"]
 
+    def _aberta_para_resolucao(self) -> bool:
+        """Achado P1 do auditor (17): RESOLVED_IMPORTED cujo evento
+        vinculado foi corrigido (desativado) volta a ser pendência — a
+        regra é computada, o status gravado não é mutado."""
+        return self.status == self.STATUS_PENDING or (
+            self.status == self.STATUS_RESOLVED_IMPORTED
+            and (self.resolved_event_id is None or not self.resolved_event.active)
+        )
+
+    @property
+    def esta_aberta(self) -> bool:
+        return self._aberta_para_resolucao()
+
     def resolve_imported(self, event) -> None:
         """P1 auditor: toda pendência resolúvel pela aplicação — vincular o
         evento correspondente (mesma conta do lote, ativo) nunca exige SQL
-        manual. Evento desativado/corrigido não é lançamento fiscal válido."""
-        if self.status != self.STATUS_PENDING:
+        manual. Evento desativado/corrigido não é lançamento fiscal válido.
+        Achado P1 do auditor (17): pendência cujo evento vinculado foi
+        desativado pode ser re-vinculada ao evento substituto."""
+        if not self._aberta_para_resolucao():
             raise ValueError(f"Pendência #{self.pk} já está resolvida ({self.status}).")
         if not event.active:
             raise ValueError("O evento vinculado deve estar ativo.")
@@ -346,15 +361,21 @@ class ImportIssue(models.Model):
             raise ValueError(
                 "O evento vinculado deve pertencer à mesma conta do lote de importação."
             )
+        anterior = self.resolved_event_id
         self.resolved_event = event
         self.status = self.STATUS_RESOLVED_IMPORTED
-        self.resolution = f"Evento #{event.pk} vinculado"
+        self.resolution = (
+            f"Evento #{event.pk} vinculado (re-vinculação; substitui #{anterior})"
+            if anterior else f"Evento #{event.pk} vinculado"
+        )
         self.resolved_at = timezone.now()
         self.save()
 
     def resolve_ignored(self, reason: str) -> None:
-        """Ignorar exige justificativa registrada (nada some sem rastro)."""
-        if self.status != self.STATUS_PENDING:
+        """Ignorar exige justificativa registrada (nada some sem rastro).
+        Achado P1 do auditor (17): pendência reaberta (evento vinculado
+        desativado) também pode ser ignorada com justificativa."""
+        if not self._aberta_para_resolucao():
             raise ValueError(f"Pendência #{self.pk} já está resolvida ({self.status}).")
         motivo = (reason or "").strip()
         if not motivo:

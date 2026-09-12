@@ -16,13 +16,15 @@ class ImportIssuesView(generic.View):
     template_name = "ledger/import_issues.html"
 
     def _context(self, account):
-        issues = ImportIssue.objects.select_related("batch").filter(
+        issues = ImportIssue.objects.select_related("batch", "resolved_event").filter(
             batch__account=account
         ).order_by("status", "batch_id", "line_number")
+        # Achado P1 do auditor (17): RESOLVED_IMPORTED com evento vinculado
+        # desativado volta à lista de pendentes (re-vinculação ou ignorar)
         return {
             "account": account,
-            "pendentes": [i for i in issues if i.status == ImportIssue.STATUS_PENDING],
-            "resolvidos": [i for i in issues if i.status != ImportIssue.STATUS_PENDING],
+            "pendentes": [i for i in issues if i.esta_aberta],
+            "resolvidos": [i for i in issues if not i.esta_aberta],
         }
 
     def get(self, request, account_id):
