@@ -79,6 +79,35 @@ def test_pendencia_de_ano_anterior_nao_bloqueia_ano_atual(ambiente):
     AnnualReconciliationService(2026).run_or_raise()  # não levanta
 
 
+def test_pendencia_resolvida_com_evento_inativo_bloqueia_e_revinculacao_libera(ambiente):
+    """Achado P1 do auditor (17): o ciclo completo. RESOLVED_IMPORTED cujo
+    evento vinculado foi corrigido (desativado) volta a ser bloqueante até
+    ser re-vinculado ao evento substituto. Falha no código atual, que só
+    examinava PENDING."""
+    from ledger.models import FinancialEvent, ImportIssue
+    conta = ambiente
+    _aporte(conta, Decimal(1000))
+    _doc(conta, Decimal(1000))
+    batch = SchwabStatementImporter(account=conta).import_csv(CSV_COM_PENDENCIA, acknowledge_pending=True)
+    issue = ImportIssue.objects.get(batch=batch)
+    ev1 = FinancialEvent.objects.create(
+        account=conta, event_type="APORTE", trade_date=date(2026, 12, 31),
+        amount_usd=Decimal(0), fx_rate=RATE, amount_brl=Decimal(0),
+    )
+    issue.resolve_imported(ev1)
+    AnnualReconciliationService(2026).run_or_raise()  # resolvida → passa
+    ev1.active = False
+    ev1.save(update_fields=["active"])
+    with pytest.raises(Exception, match="(?i)evento vinculado"):
+        AnnualReconciliationService(2026).run_or_raise()  # bloqueia de novo
+    ev2 = FinancialEvent.objects.create(
+        account=conta, event_type="APORTE", trade_date=date(2026, 12, 31),
+        amount_usd=Decimal(0), fx_rate=RATE, amount_brl=Decimal(0),
+    )
+    issue.resolve_imported(ev2)  # re-vinculação ao substituto pela aplicação
+    AnnualReconciliationService(2026).run_or_raise()  # passa
+
+
 def test_caixa_sem_documento_confirmado_bloqueia(ambiente):
     """Saldo do ledger sem extrato documentado confirmado → pendência, nunca
     passagem automática."""

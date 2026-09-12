@@ -116,3 +116,60 @@ def test_issue_ja_resolvido_nao_resolve_de_novo(conta_com_pendencia, client):
     issue.resolve_ignored("teste")
     with pytest.raises(ValueError, match="já está resolvida"):
         issue.resolve_ignored("outra justificativa")
+
+
+def _criar_evento(conta, ativo=True):
+    aapl = Asset.objects.get_or_create(
+        ticker="AAPL", defaults=dict(description="Apple", asset_type="FOREIGN_EQUITY"),
+    )[0]
+    with mock.patch("ledger.service.EventService._ptax_rate", return_value=RATE):
+        return FinancialEvent.objects.create(
+            account=conta, asset=aapl, event_type="APORTE", active=ativo,
+            trade_date=date(2026, 2, 1), amount_usd=Decimal(100),
+            fx_rate=RATE, amount_brl=Decimal(500),
+        )
+
+
+def test_reabertura_com_evento_inativo_e_revinculacao_ao_substituto(conta_com_pendencia, client):
+    """Achado P1 do auditor (17): o ciclo completo da pendência. Issue
+    vinculado ao evento #100; o evento é corrigido (desativado) → a
+    pendência volta a ser aberta (regra computada, status gravado não é
+    mutado) e pode ser re-vinculada ao evento substituto pela aplicação."""
+    conta, issue = conta_com_pendencia
+    ev1 = _criar_evento(conta)
+    issue.resolve_imported(ev1)
+    assert issue.status == ImportIssue.STATUS_RESOLVED_IMPORTED
+    ev1.active = False
+    ev1.save(update_fields=["active"])
+    issue.refresh_from_db()
+    assert issue.esta_aberta  # falha no código atual (RESOLVED_IMPORTED não era reaberta)
+    assert issue.status == ImportIssue.STATUS_RESOLVED_IMPORTED  # trilha não mutada
+    ev2 = _criar_evento(conta)
+    issue.resolve_imported(ev2)
+    issue.refresh_from_db()
+    assert issue.resolved_event_id == ev2.pk
+    assert "re-vinculação" in issue.resolution
+
+
+def test_issue_reaberto_aparece_na_tela_de_pendencias(conta_com_pendencia, client):
+    """Pendência reaberta aparece na lista de pendentes da UI — sem SQL manual."""
+    conta, issue = conta_com_pendencia
+    ev1 = _criar_evento(conta)
+    issue.resolve_imported(ev1)
+    ev1.active = False
+    ev1.save(update_fields=["active"])
+    resp = client.get(reverse("import-issues", args=[conta.pk]))
+    pendentes = resp.context["pendentes"]
+    assert issue.pk in {i.pk for i in pendentes}
+
+
+def test_issue_reaberto_pode_ser_ignorado(conta_com_pendencia):
+    conta, issue = conta_com_pendencia
+    ev1 = _criar_evento(conta)
+    issue.resolve_imported(ev1)
+    ev1.active = False
+    ev1.save(update_fields=["active"])
+    issue.refresh_from_db()
+    issue.resolve_ignored("lançamento substituto registrado à parte")
+    issue.refresh_from_db()
+    assert issue.status == ImportIssue.STATUS_RESOLVED_IGNORED
