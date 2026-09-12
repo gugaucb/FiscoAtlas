@@ -71,3 +71,33 @@ def test_relatorio_patrimonio_separa_integral_e_atribuivel(setup):
     assert tsla_row["share_pct"] == Decimal("50.00")
     attrib = next(o for o in report["ownership_attribution"] if o["account"] == conjunta)
     assert attrib["custody_brl_attrib"] == Decimal(50000)
+
+
+@pytest.mark.django_db
+def test_relatorio_caixa_e_isencao_atribuidos_ao_contribuinte(setup):
+    """Achado P0 do auditor (16): o campo fiscal do caixa ("Valor para
+    declaração") e a isenção da seção 7 são a fatia do contribuinte;
+    o integral da conta fica como informação auxiliar. Conta conjunta 50%
+    com aporte de US$ 2.000: saldo integral R$ 12.000 (PTAX fechamento 6)
+    → declaração = R$ 6.000. Variação isenta 12.000 − 10.000 (custo do
+    aporte a PTAX 5) = 2.000 → fatia do contribuinte R$ 1.000."""
+    acct = setup
+    conjunta = BrokerAccount.objects.create(
+        broker_name="Conjunta Cash", account_number="998",
+        ownership_type="JOINT", ownership_share=Decimal("50.00"),
+        is_interest_bearing=False,
+    )
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        EventService().record(dict(
+            account=conjunta, event_type="APORTE",
+            trade_date=date(2026, 1, 2), amount_usd=Decimal(2000),
+        ))
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=Decimal("6"), effective_date=date(2026, 12, 31))
+        report = ReportService(2026).build()
+    cash_row = next(c for c in report["cash"] if c["account"] == conjunta)
+    assert cash_row["balance_brl"] == Decimal("12000.00")       # integral (auxiliar)
+    assert cash_row["balance_brl_attrib"] == Decimal("6000.00")  # fatia do contribuinte
+    exempt_row = next(e for e in report["exempt"]["accounts"] if e["account"] == conjunta)
+    # variação 12.000 − 10.000 = 2.000 → fatia do contribuinte 1.000
+    assert exempt_row["exempt_brl"] == Decimal("1000.00")

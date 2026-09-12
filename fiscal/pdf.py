@@ -55,7 +55,8 @@ def render_pdf(report: dict) -> bytes:
             ["Moeda", "USD"],
             [f"Saldo em 31/12/{report['year']}", f"US$ {_fmt(c['balance_usd'])}"],
             ["PTAX", f"R$ {str(ptax['rate']).replace('.', ',')}"],
-            ["Valor para declaração", f"R$ {_fmt(c['balance_brl'])}"],
+            ["Valor para declaração (fatia do contribuinte)", f"R$ {_fmt(c['balance_brl_attrib'])}"],
+            ["Integral da conta (auxiliar)", f"R$ {_fmt(c['balance_brl'])}"],
         ]
         story.append(Table(rows))
     story.append(Spacer(1, 12))
@@ -70,9 +71,10 @@ def render_pdf(report: dict) -> bytes:
             ["Quantidade", str(a["quantity"])],
             ["Custo aquisição USD", a.get("cost_usd_text", f"US$ {_fmt(a['cost_usd_total'])}")],
             ["PTAX média", f"R$ {str(a['ptax_media']).replace('.', ',')}"],
-            ["Custo fiscal BRL", f"R$ {_fmt(a['cost_brl_total'])}"],
-            [f"Situação 31/12/{report['year'] - 1}", f"R$ {_fmt(a['prev_cost_brl'])}"],
-            [f"Situação 31/12/{report['year']}", f"R$ {_fmt(a['cost_brl_total'])}"],
+            ["Custo fiscal BRL (fatia do contribuinte)", f"R$ {_fmt(a['cost_brl_attrib'])}"],
+            [f"Situação 31/12/{report['year'] - 1} (fatia do contribuinte)", f"R$ {_fmt(a['prev_cost_brl_attrib'])}"],
+            [f"Situação 31/12/{report['year']} (fatia do contribuinte)", f"R$ {_fmt(a['cost_brl_attrib'])}"],
+            ["Integral da conta (auxiliar)", f"R$ {_fmt(a['cost_brl_total'])}"],
         ]
         story.append(Table(rows))
         story.append(Paragraph("APLICAÇÃO FINANCEIRA", styles["Heading3"]))
