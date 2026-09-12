@@ -101,3 +101,30 @@ def test_relatorio_caixa_e_isencao_atribuidos_ao_contribuinte(setup):
     exempt_row = next(e for e in report["exempt"]["accounts"] if e["account"] == conjunta)
     # variação 12.000 − 10.000 = 2.000 → fatia do contribuinte 1.000
     assert exempt_row["exempt_brl"] == Decimal("1000.00")
+
+
+@pytest.mark.django_db
+def test_conta_desativada_permanece_no_historico_do_ano(setup):
+    """P0 do auditor (24): desativar a conta após o fechamento não apaga o
+    passado fiscal — o relatório de 2026 continua exibindo caixa, custódia
+    e identificação da conta desativada com atividade no ano. Falha no
+    código atual: os históricos filtravam active=True e a conta sumia."""
+    acct = setup
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
+        antes = ReportService(2026).build()
+    acct.active = False
+    acct.save(update_fields=["active"])
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
+        depois = ReportService(2026).build()
+    # caixa, identificação e patrimônio continuam exibidos
+    assert any(c["account"] == acct for c in depois["cash"])
+    assert any(i["account_number"] == "123" for i in depois["identification"])
+    assert antes["cash"][0]["balance_brl"] == depois["cash"][0]["balance_brl"]
+    # memória de cálculo também preserva a conta desativada
+    from fiscal.memoria import build_memoria
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
+        memoria = build_memoria(2026)
+    assert any(row for a in memoria["assets"] for row in a["rows"])

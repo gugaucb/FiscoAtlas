@@ -75,7 +75,10 @@ class ReportService:
         # ao contribuinte (contas conjuntas / de terceiros).
         attrib = {}
         prev_yearend = date(self.year - 1, 12, 31)
-        for account in BrokerAccount.objects.filter(active=True):
+        # P0 auditor (24): contas desativadas com atividade no ano continuam
+        # nos históricos — desativar não apaga o passado fiscal.
+        contas_historico = BrokerAccount.historico_do_ano(self.year, yearend)
+        for account in contas_historico:
             acc = attrib.setdefault(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0)})
             balance_usd = CashLedgerService().balance(account, until=yearend)
             cash_brl = (balance_usd * ptax.rate).quantize(Decimal("0.01"))
@@ -211,7 +214,7 @@ class ReportService:
         # 06: a atribuição já foi aplicada no cálculo (OwnershipService) —
         # aqui é só exibição, sem re-dividir (nada de dupla atribuição).
         ownership_attribution = []
-        for account in BrokerAccount.objects.filter(active=True):
+        for account in contas_historico:
             acc = attrib.get(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0), "cash_brl": Decimal(0)})
             ownership_attribution.append({
                 "account": account,
@@ -244,7 +247,7 @@ class ReportService:
             "identification": [
                 {"broker_name": a.broker_name, "account_number": a.account_number,
                  "country_code": a.country_code}
-                for a in BrokerAccount.objects.filter(active=True)
+                for a in contas_historico
             ],
             "assets": [
                 {"ticker": a["asset"].ticker, "description": a["asset"].description,
