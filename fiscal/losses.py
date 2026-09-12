@@ -98,6 +98,57 @@ class LossLedgerService:
         return compensado
 
     @classmethod
+    def sync_year(cls, year: int, resultados: list) -> None:
+        """Ticket 28 (P0 do auditor): o LossRecord persistido reflete o
+        resultado fiscal ATUAL das alienações do ano — criar perda nova,
+        atualizar valor mudado (ex.: custo-base corrigido), remover perda
+        que virou lucro ou cujo evento foi desativado. Registros já
+        compensados NÃO são alterados silenciosamente: bloqueia pedindo
+        reabertura em cascata (ticket 26 devolve as compensações).
+
+        Executada no FECHAMENTO (save_snapshot), nunca no compute().
+        """
+        with transaction.atomic():
+            # perdas de eventos desativados (corrigidos) saem do ledger —
+            # sem compensação pendente, não são lançamento fiscal válido
+            for record in LossRecord.objects.filter(
+                origin_year=year, source_event__isnull=False,
+            ).select_related("source_event"):
+                if not record.source_event.active and not record.compensations.exists():
+                    record.delete()
+            for r in resultados:
+                ev = r["event"]
+                gain = r["gain_brl"]
+                record = LossRecord.objects.select_for_update().filter(
+                    origin_year=year, source_event=ev,
+                ).first()
+                if gain < 0:
+                    amount = (-gain).quantize(Decimal("0.01"))
+                    if record is None:
+                        cls.record_loss(year, amount, source_event=ev, description=str(ev))
+                    else:
+                        if record.compensations.exists():
+                            raise ValidationError(
+                                f"O resultado fiscal da alienação {ev} mudou, mas a "
+                                f"perda registrada já foi compensada em fechamento "
+                                f"(R$ {record.amount_brl - record.remaining_brl} "
+                                f"consumidos). Reabra os anos consumidores em "
+                                f"cascata antes de refechar {year}."
+                            )
+                        record.amount_brl = amount
+                        record.remaining_brl = amount
+                        record.description = str(ev)
+                        record.save(update_fields=["amount_brl", "remaining_brl", "description"])
+                elif record is not None:
+                    if record.compensations.exists():
+                        raise ValidationError(
+                            f"A alienação {ev} deixou de gerar perda, mas a perda "
+                            "registrada já foi compensada em fechamento. Reabra os "
+                            f"anos consumidores em cascata antes de refechar {year}."
+                        )
+                    record.delete()
+
+    @classmethod
     def revert_compensations(cls, year: int) -> Decimal:
         """Ticket 26 (P0 do auditor): reabertura do ano devolve o prejuízo
         consumido — cada LossCompensation(year) retorna ao remaining_brl do

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] compute() não grava LossRecord (read-only); relatório/PDF/apuração não persistem nada
+- [x] compute() não grava LossRecord (read-only); relatório/PDF/apuração não persistem nada
 - [ ] Sincronização no fechamento cria/atualiza/remove LossRecord conforme o resultado atual da venda
 - [ ] Perda que muda de valor atualiza o registro (sem remaining negativo)
 - [ ] Perda que vira lucro/remove registro: sem compensações → removido; com compensações → bloqueia com orientação de reabertura em cascata
