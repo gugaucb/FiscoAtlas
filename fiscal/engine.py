@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 
 from fiscal.date_rules import TaxDateResolver, fiscal_year_q, income_fiscal_year_q
@@ -49,8 +50,15 @@ class TaxEngine:
     @classmethod
     def save_snapshot(cls, year: int) -> AnnualAssessment:
         result = cls(year).compute()
-        # RF-LOS-007: consolida a compensação FIFO no ledger (idempotente)
-        LossLedgerService.apply_compensation(year, result["income_brl"])
+        # Ticket 28 (P0 do auditor): consolidação do Loss Ledger acontece no
+        # FECHAMENTO — devolve compensações do próprio ano (refechamento
+        # idempotente), sincroniza os registros com o resultado fiscal ATUAL
+        # das alienações e só então consome FIFO (tudo em uma transação).
+        with transaction.atomic():
+            LossLedgerService.revert_compensations(year)
+            LossLedgerService.sync_year(year, result["resultados_alienacao"])
+            # RF-LOS-007: consolida a compensação FIFO no ledger (idempotente)
+            LossLedgerService.apply_compensation(year, result["income_brl"])
         rule = result["rule"]
         defaults = {
             "rule_version": rule.rule_version,
@@ -101,6 +109,36 @@ class TaxEngine:
                 "Contribuinte não qualificado como residente fiscal pleno no Brasil."
             )
 
+    def _resultados_alienacao(self) -> list:
+        """Resultados fiscais das alienações do ano (fato atribuído ao
+        contribuinte), SEM efeitos persistentes — fonte do compute e da
+        sincronização do Loss Ledger no fechamento (ticket 28)."""
+        gain_q = Q(event_type__in=("SELL", "CASH_IN_LIEU"), trade_date__year=self.year)
+        sells = list(
+            FinancialEvent.objects.filter(gain_q, active=True)
+            .select_related("asset").order_by("trade_date", "id")
+        )
+        realized_idx = {}
+        account_ids = {ev.account_id for ev in sells}
+        asset_ids = {ev.asset_id for ev in sells if ev.asset_id}
+        for account_id in account_ids:
+            for asset_id in asset_ids:
+                for r in PositionService().realized(account_id, asset_id):
+                    if r["event"].trade_date.year == self.year:
+                        realized_idx[r["event"].id] = r
+        out = []
+        for ev in sells:
+            r = realized_idx.get(ev.id)
+            if r is None:
+                continue
+            fator = OwnershipService.taxpayer_share_factor(ev.account)
+            out.append({
+                "event": ev,
+                "gain_brl": (r["gain_brl"] * fator).quantize(Decimal("0.01")),
+                "sale_brl": r["sale_brl"], "cost_sold_brl": r["cost_sold_brl"],
+            })
+        return out
+
     def compute(self) -> dict:
         self._exigir_residente_fiscal()
         self._bloquear_ativos_nao_cobertos()
@@ -116,15 +154,10 @@ class TaxEngine:
             FinancialEvent.objects.filter(gain_q | income_q, active=True)
             .select_related("asset").order_by("trade_date", "id")
         )
-
-        realized_idx = {}
-        account_ids = {ev.account_id for ev in events}
-        asset_ids = {ev.asset_id for ev in events if ev.asset_id}
-        for account_id in account_ids:
-            for asset_id in asset_ids:
-                for r in PositionService().realized(account_id, asset_id):
-                    if r["event"].trade_date.year == self.year:
-                        realized_idx[r["event"].id] = r
+        # Ticket 28: resultados de alienação calculados SEM efeito
+        # persistente — a gravação no Loss Ledger pertence ao fechamento.
+        resultados = self._resultados_alienacao()
+        resultados_por_evento = {r["event"].id: r for r in resultados}
 
         detail = []
         income = ZERO
@@ -160,22 +193,17 @@ class TaxEngine:
             # atribuídos ao contribuinte pela fatia dele.
             fator = OwnershipService.taxpayer_share_factor(ev.account)
             if ev.event_type in ("SELL", "CASH_IN_LIEU"):
-                r = realized_idx.get(ev.id)
-                if r is None:
+                res = resultados_por_evento.get(ev.id)
+                if res is None:
                     continue
-                gain_brl = (r["gain_brl"] * fator).quantize(Decimal("0.01"))
+                gain_brl = res["gain_brl"]
                 gross_brl = gain_brl if gain_brl > 0 else ZERO
                 if gain_brl < 0:
                     loss += -gain_brl
-                    # RF-LOS-006: registra a perda no ledger rastreável
-                    LossLedgerService.record_loss(
-                        self.year, -gain_brl, source_event=ev,
-                        description=str(ev),
-                    )
                 income += gross_brl
                 detail.append({
                     "event": ev, "kind": "gain/loss", "gross_brl": gross_brl,
-                    "sale_brl": r["sale_brl"], "cost_sold_brl": r["cost_sold_brl"],
+                    "sale_brl": res["sale_brl"], "cost_sold_brl": res["cost_sold_brl"],
                     "withholding_brl": ZERO, "credit_used": ZERO,
                 })
             else:  # DIVIDEND, JUROS
@@ -291,6 +319,7 @@ class TaxEngine:
                 "withholding_brl": ZERO, "credit_used": ZERO,
             })
         return {
+            "resultados_alienacao": resultados,
             "income_brl": income,
             "loss_brl": loss,
             "loss_inherited_brl": loss_inherited,
