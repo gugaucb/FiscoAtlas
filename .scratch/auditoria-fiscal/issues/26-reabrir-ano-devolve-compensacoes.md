@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Reabrir 2025 (consumo R$600 de R$1.000) → `LossLedgerService.available(until=2025)` volta a R$1.000
+- [x] Reabrir 2025 (consumo R$600 de R$1.000) → `LossLedgerService.available(until=2025)` volta a R$1.000
 - [ ] `LossCompensation(year=2025)` zerada após reabertura
 - [ ] Reversão + restauração + remoção do snapshot na mesma `transaction.atomic()` (falha no meio não deixa estado parcial)
 - [ ] `select_for_update()` nos LossRecord durante a devolução

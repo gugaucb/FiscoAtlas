@@ -96,3 +96,19 @@ class LossLedgerService:
                 compensado += uso
                 restante -= uso
         return compensado
+
+    @classmethod
+    def revert_compensations(cls, year: int) -> Decimal:
+        """Ticket 26 (P0 do auditor): reabertura do ano devolve o prejuízo
+        consumido — cada LossCompensation(year) retorna ao remaining_brl do
+        registro de origem e é apagada. Indivisível (transação atômica com
+        bloqueio concorrente nos registros, como apply_compensation)."""
+        devolvido = ZERO
+        with transaction.atomic():
+            for comp in LossCompensation.objects.filter(year=year).select_related("record"):
+                record = LossRecord.objects.select_for_update().get(pk=comp.record_id)
+                record.remaining_brl = (record.remaining_brl + comp.amount_brl).quantize(Decimal("0.01"))
+                record.save(update_fields=["remaining_brl"])
+                comp.delete()
+                devolvido += comp.amount_brl
+        return devolvido
