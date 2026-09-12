@@ -1,0 +1,58 @@
+{% extends "ledger/base.html" %}
+
+{% block content %}
+<h1>Pendências de importação — {{ account }}</h1>
+<p><a href="{% url 'import-statement' account.id %}">← Voltar à importação</a></p>
+
+<h2>Abertas ({{ pendentes|length }})</h2>
+{% for issue in pendentes %}
+<div class="card">
+  <h3 style="font-size:1.05rem">Lote {{ issue.batch_id }} — linha {{ issue.line_number }}: {{ issue.raw_action|default:"ação vazia" }}</h3>
+  {% if issue.severity %}<span class="badge">{{ issue.severity }}</span>{% endif %}
+  {% if issue.reason %}<p><em class="note">{{ issue.reason }}</em></p>{% endif %}
+  {% if issue.raw_data %}
+  <p><small><code>{{ issue.raw_data }}</code></small></p>
+  {% endif %}
+  <p><small>Lance o evento correspondente em
+  <a href="{% url 'event-create' %}">/eventos/novo/</a> (mesma conta) e vincule pelo ID abaixo.</small></p>
+
+  <form method="post" style="margin-bottom:0.5rem">
+    {% csrf_token %}
+    <input type="hidden" name="issue_pk" value="{{ issue.pk }}">
+    <input type="hidden" name="acao" value="vincular">
+    <label>ID do evento lançado:
+      <input type="number" name="event_pk" min="1" required>
+    </label>
+    <button type="submit" class="btn">Registrar lançamento correspondente</button>
+  </form>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="issue_pk" value="{{ issue.pk }}">
+    <input type="hidden" name="acao" value="ignorar">
+    <label>Justificativa para ignorar esta linha (obrigatória):
+      <textarea name="justificativa" rows="2" style="width:100%"></textarea>
+    </label>
+    <button type="submit" class="btn secondary">Ignorar esta linha</button>
+  </form>
+</div>
+{% empty %}
+<p class="empty">Nenhuma pendência aberta.</p>
+{% endfor %}
+
+<h2>Resolvidas ({{ resolvidos|length }})</h2>
+<table>
+  <thead><tr><th>Lote</th><th>Linha</th><th>Ação</th><th>Status</th><th>Resolução</th><th>Resolvida em</th></tr></thead>
+  <tbody>
+  {% for issue in resolvidos %}
+  <tr>
+    <td>{{ issue.batch_id }}</td><td>{{ issue.line_number }}</td><td>{{ issue.raw_action }}</td>
+    <td>{{ issue.get_status_display }}</td><td>{{ issue.resolution }}</td>
+    <td>{{ issue.resolved_at|date:"d/m/Y H:i" }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6" class="empty">Nenhuma pendência resolvida ainda.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
