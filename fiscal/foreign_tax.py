@@ -21,8 +21,14 @@ class ForeignTaxCreditService:
         """(elegível, motivo) para um ForeignTaxPayment.
 
         Motivos de inelegibilidade: UNKNOWN_*, NAO_FEDERAL,
-        SEM_RECIPROCIDADE, TRIBUTO_NAO_ELEGIVEL. UNKNOWN (jurisdição, tipo
-        ou evidência) exige classificação do usuário — sem regra silenciosa.
+        SEM_RECIPROCIDADE, TRIBUTO_NAO_ELEGIVEL, RECOVERABLE. UNKNOWN
+        (jurisdição, tipo, evidência ou recuperabilidade) exige classificação
+        do usuário — sem regra silenciosa.
+
+        P0 do auditor: o crédito (Lei 14.754/2023, art. 4º; IN RFB
+        2.180/2024) é só para imposto pago em CARÁTER DEFINITIVO — tributo
+        passível de restituição/reembolso/compensação no exterior não gera
+        crédito brasileiro (RECOVERABLE → crédito zero).
         """
         if pagamento.jurisdiction_level == "UNKNOWN":
             return False, "UNKNOWN_JURISDICAO"
@@ -30,6 +36,10 @@ class ForeignTaxCreditService:
             return False, "UNKNOWN_TIPO"
         if pagamento.date_evidence_source in ("", "UNKNOWN"):
             return False, "UNKNOWN_EVIDENCIA"
+        if getattr(pagamento, "recoverability_status", "UNKNOWN") == "UNKNOWN":
+            return False, "UNKNOWN_RECUPERABILIDADE"
+        if pagamento.recoverability_status == "RECOVERABLE":
+            return False, "RECOVERABLE"
         if pagamento.jurisdiction_level != "FEDERAL":
             return False, "NAO_FEDERAL"
         if pagamento.country_code not in RECIPROCITY_COUNTRIES:

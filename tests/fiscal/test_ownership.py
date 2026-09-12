@@ -43,6 +43,7 @@ def _dividendo(conta, asset, **extra):
         trade_date=date(2026, 3, 10), quantity=Decimal(100), per_share_usd=Decimal(1),
         date_evidence_source="BROKER_STATEMENT", country_code="US",
         jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+        recoverability_status="NON_RECOVERABLE",
         foreign_tax_payment_date=date(2026, 3, 10),
     )
     base.update(extra)

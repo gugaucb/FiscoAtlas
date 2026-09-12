@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import django.forms as forms
-from ledger.models import DATE_EVIDENCE_SOURCES, FOREIGN_TAX_STATES, JURISDICTION_LEVELS, TAX_TYPES, Asset, FinancialEvent
+from ledger.models import DATE_EVIDENCE_SOURCES, FOREIGN_TAX_STATES, JURISDICTION_LEVELS, RECOVERABILITY_STATUSES, TAX_TYPES, Asset, FinancialEvent
 from ledger.foreign_tax_forms import ForeignTaxPaymentForm  # noqa: F401 (API única de formulários)
 
 LABELS = {
@@ -76,6 +76,13 @@ class EventForm(forms.ModelForm):
     country_code = forms.CharField(max_length=2, initial="US", label="País")
     jurisdiction_level = forms.ChoiceField(choices=JURISDICTION_LEVELS, initial="FEDERAL", label="Jurisdição")
     tax_type = forms.ChoiceField(choices=TAX_TYPES, initial="WITHHOLDING_INCOME_TAX", label="Tipo de imposto")
+    recoverability_status = forms.ChoiceField(
+        required=False, choices=[("", "—")] + RECOVERABILITY_STATUSES,
+        label="Recuperabilidade no exterior",
+        help_text="Só gera crédito brasileiro o imposto pago em caráter "
+        "DEFINITIVO — recuperável (restituição/reembolso/compensação) "
+        "não gera; — fica UNKNOWN e bloqueia o fechamento até classificar.",
+    )
     source_document_id = forms.CharField(max_length=128, required=False, label="ID do documento")
     source_reference = forms.CharField(max_length=255, required=False, label="Referência do documento")
 
