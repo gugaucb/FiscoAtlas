@@ -1,7 +1,7 @@
 # Manual do Sistema — FiscoAtlas
 
-> **Versão:** 1.2 (atualizada para o sistema v0.5.0)  
-> **Data:** 08/09/2026  
+> **Versão:** 1.3 (reabertura formal, guarda de ano fechado e dados estruturais)  
+> **Data:** 12/09/2026  
 > **Sistema:** FiscoAtlas — Imposto sobre Investimentos no Exterior (EUA)  
 > **Base legal:** Lei nº 14.754/2023, IN RFB 2.180/2024, Lei nº 15.270/2025
 
@@ -327,6 +327,10 @@ Gerencia contas de corretora/banco no exterior. Cada conta funciona como um "cai
 
 ![Edição de conta](images/23-edicao-conta.png)
 
+> **Regra**: Desativar uma conta **não apaga o passado fiscal dela** — contas desativadas que tiveram atividade no ano-calendário (eventos, posição de abertura, custódia ou caixa ≠ 0 na data-base) continuam entrando nos históricos da apuração e da reconciliação. Formulários de entrada (eventos, importação) continuam restritos a contas ativas.
+
+> **Regra**: Com algum ano fechado em que a conta participou, alterar os campos de titularidade (`ownership_type`, `ownership_share`) ou a condição de conta remunerada (`is_interest_bearing`) é **bloqueado** — reabra o ano antes ([Ciclo de Vida Multi-Anos](#21-ciclo-de-vida-multi-anos-e-backup)). O apelido e demais dados descritivos permanecem editáveis.
+
 > **Regra**: Contas **não remuneradas** têm seus juros automaticamente isentos conforme a política fiscal (`fx_cash_policy.non_bearing_cash_exempt`).
 
 ### Importação de extrato (CSV)
@@ -482,6 +486,8 @@ Permite importar posições pré-existentes (anteriores ao uso do sistema).
 
 > **Uso típico**: Contribuinte que já possuía investimentos antes de começar a usar o sistema. A posição de abertura define o custo-base para cálculos futuros.
 
+> **Regra**: Com um ano fechado, criar, alterar ou remover uma posição de abertura cuja data de referência possa afetar esse ano é **bloqueado** ("Reabra o ano XXXX antes de alterar dados estruturais que afetam essa apuração") — a posição alimenta custo fiscal, custo médio e ganho/prejuízo de todos os anos posteriores à data-base. Após a reabertura, a alteração é permitida. Posições com data **futura** (ex.: 31/12/2027) não são bloqueadas pelo fechamento de um ano anterior.
+
 ---
 
 ## 14. Apuração Anual
@@ -513,6 +519,18 @@ O sistema utiliza a **TaxRule V2** (Lei 14.754/2023):
 O botão **Fechar ano** executa o `AnnualClosingValidator` com 20+ validações:
 
 ![Apuração fechada](images/16b-apuracao-fechada.png)
+
+Após o fechamento, o botão **Fechar ano** desaparece (tentar fechar novamente via outra via é bloqueado no servidor) e passa a existir o botão **Reabrir ano** — veja [Ciclo de Vida Multi-Anos](#21-ciclo-de-vida-multi-anos-e-backup).
+
+### Reabrir ano
+
+A reabertura é formal, pela tela de Apuração (nada de SQL manual):
+
+1. Clique em **Reabrir ano** e confirme digitando o ano-calendário
+2. O snapshot de fechamento é apagado e os prejuízos consumidos por compensação naquele ano são **devolvidos ao saldo** (na mesma transação)
+3. Refaça a apuração e feche o ano novamente
+
+> ⚠️ Não é possível reabrir um ano se existem anos **posteriores** fechados — reabrir um ano anterior desfaria consumos de prejuízo em cascata. Reabra do mais recente para o mais antigo.
 
 #### Validações bloqueantes
 
@@ -780,11 +798,18 @@ Apenas **Estados Unidos (US)** — permite crédito de imposto federal retido.
 
 ### 21.1 O que acontece quando o ano é fechado
 
-Fechar um ano-calendário **sela** a apuração daquele período: os números do ano ficam imutáveis e o Relatório DIRPF correspondente pode ser consultado e reexportado quando necessário. Não é possível editar eventos que alterem o resultado de um ano já fechado.
+Fechar um ano-calendário **sela** a apuração daquele período: os números do ano ficam imutáveis e o Relatório DIRPF correspondente pode ser consultado e reexportado quando necessário. Alterações retroativas só são possíveis **reabrindo o ano formalmente** (botão **Reabrir ano** na Apuração — ver [Reabrir ano](#reabrir-ano)).
+
+O que fica bloqueado enquanto o ano estiver fechado:
+
+- **Eventos fiscais** do ano: criar, corrigir ou desativar lançamentos; editar imposto retido no exterior; registrar transferências de custódia
+- **PTAX**: override manual de cotação de data do ano fechado
+- **Dados estruturais**: criar/alterar/remover [posição de abertura](#13-posição-de-abertura) cuja data-base afete o ano; alterar titularidade (`ownership_type`, `ownership_share`) ou conta remunerada (`is_interest_bearing`) de conta que participou do ano — dados descritivos (apelido) permanecem editáveis
+
+A reabertura apaga o snapshot do fechamento e **devolve ao saldo** os prejuízos consumidos por compensação naquele ano. Após corrigir os dados, feche o ano novamente.
 
 Consequências práticas:
 
-- **Ano fechado não se reabre** — correções no período passam pela retificação da declaração, não pelo sistema
 - **Restituição retroativa** (estorno de imposto de um ano fechado) exige retificação da declaração de origem — o validador bloqueia se você tentar lançá-la no ano corrente (ver [Troubleshooting](#22-troubleshooting--se-algo-der-errado))
 - O relatório e a memória de cálculo do ano fechado continuam disponíveis para consulta e download
 
@@ -850,6 +875,7 @@ Ao clicar em **Fechar ano**, o `AnnualClosingValidator` executa todas as valida�
 | Retenção acima do limite | Imposto exterior > 15% do rendimento | Retenção na fonte acima de 15% do rendimento bruto (ex.: 30% retido sobre dividendo) | O lançamento é válido e **não bloqueia** o fechamento (Lei 14.754/2023, art. 4º) — o crédito fica limitado ao teto de 15% por rendimento e o excedente é descartado. Aparece no relatório como "Crédito não aproveitado" |
 | Crédito não compensável | Crédito acima do IR devido | Crédito exterior aproveitado excedendo o imposto brasileiro | Não há carry-forward de crédito (Lei 14.754/2023, art. 4º). Revise os lançamentos de retenção; o crédito é limitado ao IR devido |
 | Restituição retroativa | Estorno em ano fechado | `WITHHOLDING_REFUND` referente a imposto de ano já fechado | Exige retificação da declaração de origem — não é possível incluir no ano corrente; consulte seu contador |
+| Ano fechado | "Reabra o ano XXXX antes de alterar…" | Tentativa de criar/corrigir evento, PTAX, posição de abertura ou titularidade atingindo ano confirmado | [Reabra o ano](#reabrir-ano) (do mais recente para o mais antigo), corrija os dados e feche novamente |
 
 ### 22.2 Outros erros comuns
 

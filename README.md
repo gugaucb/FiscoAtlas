@@ -13,7 +13,10 @@ anexos cifrados.
 - **Apuração anual**: renda, ganhos, prejuízos compensáveis, crédito de
   imposto pago no exterior (limitado a 15% por rendimento)
 - **Relatório DIRPF** (HTML + PDF) e **memória de cálculo** linha a linha (PDF)
-- **Fechamento do ano** com snapshot e arrasto de prejuízos
+- **Fechamento do ano** com snapshot e arrasto de prejuízos — e **reabertura
+  formal** pela aplicação (devolve compensações ao saldo); anos fechados não
+  aceitam alteração retroativa de eventos, PTAX, posição de abertura ou
+  titularidade sem reabertura explícita
 - **Segurança**: senha + recovery key, auto-lock, banco SQLCipher, documentos
   cifrados, log de auditoria
 
