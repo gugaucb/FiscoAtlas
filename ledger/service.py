@@ -34,10 +34,26 @@ class EventService:
         return self.ptax.get_rate(trade_date).rate
 
     def record(self, data: dict) -> FinancialEvent:
+        from fiscal.closing import ano_fiscal_de, assert_fiscal_year_open
+
         etype = data["event_type"]
         qty, price = data.get("quantity"), data.get("price_usd")
         fee = data.get("fee_usd") or Decimal(0)
         tax = data.get("tax_usd") or Decimal(0)
+
+        # Ticket 25 (P0 do auditor): ano fechado não pode ser alterado. A
+        # guarda cobre criação E correção — mover fatos do ano original
+        # (fechado) para outro ano também altera história fechada.
+        ano_novo = ano_fiscal_de(
+            etype, data["trade_date"],
+            data.get("income_receipt_date") if etype in ("DIVIDEND", "JUROS") else None,
+        )
+        assert_fiscal_year_open(ano_novo)
+        if data.get("corrects"):
+            orig = data["corrects"]
+            assert_fiscal_year_open(ano_fiscal_de(
+                orig.event_type, orig.trade_date, orig.income_receipt_date,
+            ))
 
         # RF-AST-003: ativo deve existir; sem auto-criação silenciosa.
         if not data.get("asset") and data.get("asset_ticker"):
@@ -176,6 +192,8 @@ class BrokerTransferService:
 
     def record(self, out_account, in_account, trade_date, asset=None,
                quantity=None, amount_usd=None) -> tuple:
+        from fiscal.closing import assert_fiscal_year_open
+        assert_fiscal_year_open(trade_date.year)
         if out_account == in_account:
             raise ValueError("conta de origem e destino devem ser distintas.")
         rate = self._ptax_rate(trade_date)

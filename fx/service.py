@@ -48,6 +48,10 @@ class PtaxService:
     def override(self, requested: date, new_rate: Decimal, reason: str, quote_type: str = "VENDA") -> PtaxRate:
         if not reason:
             raise ValueError("override_reason é obrigatório")
+        # Ticket 25: sobrescrever PTAX de data-base de ano fechado altera
+        # fatos fiscais consolidados — exige reabertura.
+        from fiscal.closing import assert_fiscal_year_open
+        assert_fiscal_year_open(requested.year)
         return PtaxRate.objects.create(
             requested_date=requested,
             effective_date=requested,
