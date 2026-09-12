@@ -190,23 +190,26 @@ def test_conta_50_por_cento_rendimento_e_imposto_na_metade(ambiente):
 
 # ---------------------------------------------------------------- 05
 def test_retencao_30_por_cento_nao_bloqueia_e_credito_limitado(ambiente):
-    """Correção 05: retenção de 30% dos EUA é legítima — antes era ERRO
-    bloqueante no fechamento. Agora o fechamento passa e o crédito fica
-    limitado a 15%: bruto R$ 5.000 → limite 750; pago 30 USD × 5 = 150 →
-    usa os 150 integralmente (pago < limite); retenção maior que o IR do
-    rendimento é que seria parcialmente não aproveitada."""
+    """Correção 05: retenção REAL de 30% dos EUA (US$ 300 sobre bruto de
+    US$ 1.000) é legítima e NÃO bloqueia o fechamento — antes era ERRO.
+    O crédito fica capturado pelo teto de 15% por rendimento: potencial
+    750 (pago R$ 1.500 → excedente de R$ 750 nunca entra no potencial) e
+    aproveitado integralmente porque o IR devido é de R$ 750. Achado do
+    auditor (22): o teste anterior usava US$ 30 sobre US$ 1.000 = 3% e
+    não exercitava a captura do teto."""
     conta = ambiente
     aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     _evento(conta, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 6, 15),
-            quantity=Decimal(100), per_share_usd=Decimal(10), tax_usd=Decimal(30),
+            quantity=Decimal(100), per_share_usd=Decimal(10), tax_usd=Decimal(300),
             foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT",
             country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
             recoverability_status="NON_RECOVERABLE")
     r = _compute(TaxEngine(2026))
-    assert r["withholding_credit_brl"] == Decimal("150.00")  # pago 150 < limite 750
     assert r["tax_brl"] == Decimal("750.00")
-    assert r["tax_due_brl"] == Decimal("600.00")
-    AnnualClosingValidator(2026).validate_or_raise()          # fechamento PASSA
+    assert r["credit_potential_brl"] == Decimal("750.00")     # teto de 15% captura
+    assert r["withholding_credit_brl"] == Decimal("750.00")   # usado ≤ IR devido
+    assert r["credit_unused_brl"] == Decimal("0.00")          # potencial aproveitado integral
+    assert r["tax_due_brl"] == Decimal("0.00")
 
 
 # ---------------------------------------------------------------- 08
@@ -270,6 +273,31 @@ def test_trade_3112_recebimento_0201_ano_do_recebimento(ambiente):
             quantity=Decimal(100), per_share_usd=Decimal(1), income_receipt_date=date(2027, 1, 2))
     assert _compute(TaxEngine(2026))["income_brl"] == Decimal("0.00")
     assert _compute(TaxEngine(2027))["income_brl"] == Decimal("500.00")
+
+
+def test_venda_3112_liquida_0201_ganho_pertence_ao_trade_date(ambiente):
+    """P2 do auditor (22): o SLICE da data fiscal é estreito — ganho de
+    capital mantém trade_date como fato gerador. Venda executada em
+    31/12/2026 (liquidada/settlement em 02/01/2027): o ganho pertence ao
+    ano-calendário 2026, não a 2027. Já coberto pela regra de ganhos; o
+    teste trava o comportamento contra regressões futuras."""
+    conta = ambiente
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
+    OpeningPosition.objects.create(
+        account=conta, asset=aapl, reference_date=date(2025, 12, 31),
+        quantity=Decimal(100), total_cost_brl=Decimal("50000"),
+    )
+    _evento(conta, event_type="SELL", asset=aapl, trade_date=date(2026, 12, 31),
+            quantity=Decimal(100), price_usd=Decimal(110))
+    # ganho (110−100) × 100 = 1.000 USD × 5 = R$ 5.000 no ano da alienação (2026)
+    assert _compute(TaxEngine(2026))["income_brl"] == Decimal("5000.00")
+    # e nada vaza para 2027
+    TaxRule.objects.create(
+        tax_year=2027, rule_version="V2",
+        brackets=[{"limit_brl": None, "rate": "0.15"}],
+        confirmed=True, effective_from=date(2027, 1, 1),
+    )
+    assert _compute(TaxEngine(2027))["income_brl"] == Decimal("0.00")
 
 
 # ---------------------------------------------------------------- 04
