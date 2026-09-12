@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
-from fiscal.date_rules import fiscal_year_q
+from fiscal.date_rules import fiscal_year_of_event, fiscal_year_q
 from fiscal.models import AnnualAssessment, Profile
 from ledger.models import Asset, FinancialEvent
 from ledger.position import PositionService
@@ -121,7 +121,9 @@ class AnnualClosingValidator:
             refund_of__isnull=False,
         ).select_related("refund_of")
         for refund in refunds:
-            origem = refund.refund_of.trade_date.year
+            # ano fiscal de origem: rendimentos (DIVIDEND/JUROS) pelo
+            # recebimento — refund da trade_date é o fato gerador do refund
+            origem = fiscal_year_of_event(refund.refund_of)
             if origem >= self.year:
                 continue
             if AnnualAssessment.objects.filter(year=origem).exists():

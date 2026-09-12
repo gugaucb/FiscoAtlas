@@ -158,6 +158,30 @@ def test_engine_bloqueia_regimes_nao_cobertos(conta, regra_2026, tipo, controlad
         _compute(TaxEngine(2026))
 
 
+def test_engine_bloqueia_ativo_unknown_no_ano_do_recebimento(conta, residente):
+    """P0 do auditor (efeito do ticket 10 no engine): _bloquear_ativos_nao_cobertos
+    procurava por events__trade_date__year — dividendo negociado 31/12/2026 e
+    recebido 02/01/2027 era tributado em 2027, mas o ativo UNKNOWN escapava do
+    bloqueio de regime nesse ano."""
+    from fiscal.models import TaxRule
+    TaxRule.objects.create(
+        tax_year=2027, rule_version="V2",
+        brackets=[{"limit_brl": None, "rate": "0.15"}],
+        confirmed=True, quote_type="VENDA", date_rule="INCOME_RECEIPT_DATE",
+        effective_from=date(2027, 1, 1),
+    )
+    asset = Asset.objects.create(ticker="XYZ", description="X", asset_type="UNKNOWN")
+    with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
+        EventService().record(dict(event_type="APORTE", account=conta,
+                                   trade_date=date(2026, 12, 30), amount_usd=Decimal(1000)))
+        EventService().record(dict(event_type="DIVIDEND", account=conta, asset=asset,
+                                   trade_date=date(2026, 12, 31), quantity=Decimal(10),
+                                   per_share_usd=Decimal(1),
+                                   income_receipt_date=date(2027, 1, 2)))
+    with pytest.raises(ValidationError, match="Regime não coberto"):
+        _compute(TaxEngine(2027))
+
+
 def test_engine_permite_tipos_elegiveis(conta, regra_2026):
     asset = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
     EventService().record(dict(event_type="BUY", account=conta, asset=asset,
