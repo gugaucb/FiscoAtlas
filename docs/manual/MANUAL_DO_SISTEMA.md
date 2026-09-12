@@ -145,7 +145,7 @@ Além do imposto, quem tem capitais no exterior pode ter obrigação **informati
 | ≥ US$ 100.000.000 | CBE **trimestral** |
 | Abaixo | Dispensado |
 
-O sistema avalia sua posição em 31/12 e indica no Relatório DIRPF se a CBE é obrigatória (ver [Relatório DIRPF](#15-relatório-dirpf)).
+O sistema avalia sua posição em 31/12 e indica no Relatório DIRPF se a CBE é obrigatória (ver [Relatório DIRPF](#15-relatório-dirpf)) — **como apoio informativo apenas**. O FiscoAtlas atende patrimônio exterior abaixo de US$ 300.000, bem abaixo do limite de obrigatoriedade anual (US$ 1.000.000): nesse perfil a CBE não é obrigatória e o sistema **não é um calculador de CBE completo** — a declaração ao BCB, quando aplicável por outros capitais, é responsabilidade do contribuinte.
 
 > **Aviso**: este capítulo é uma simplificação didática. Valide sempre com um contador antes de entregar a declaração.
 

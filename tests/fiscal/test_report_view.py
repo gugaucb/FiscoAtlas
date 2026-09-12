@@ -35,6 +35,19 @@ def test_report_page_html(client, setup):
     assert "/relatorio/2026/pdf" in html
 
 
+def test_report_page_cbe_aviso_de_escopo(client, setup):
+    """Achado do auditor (21): o sistema não se apresenta como calculador de
+    CBE — o card exibe o aviso de escopo (patrimônio < US$ 300 mil, abaixo
+    do limite de obrigatoriedade anual de US$ 1.000.000)."""
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
+        html = client.get("/relatorio/2026/").content.decode()
+    assert "Escopo" in html
+    assert "US$ 300.000" in html
+    assert "não é obrigatória" in html
+    assert "não é um calculador de CBE completo" in html
+
+
 def test_report_pdf_download(client, setup):
     with mock.patch.object(PtaxService, "get_rate") as get_rate:
         get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
