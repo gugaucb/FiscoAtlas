@@ -109,9 +109,18 @@ class PositionsView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         rows = []
-        accounts = FinancialEvent.objects.filter(active=True).values_list("account", flat=True).distinct()
-        for asset in Asset.objects.filter(events__active=True).distinct():
-            for account_id in set(accounts):
+        # Achado P1 do auditor (19): mesma fonte de descoberta do relatório
+        # e da reconciliação — união de eventos ativos e posições de
+        # abertura; carteira só com OpeningPosition é custódia real.
+        from django.db.models import Q
+        from ledger.models import OpeningPosition
+        contas = set(FinancialEvent.objects.filter(active=True).values_list("account", flat=True))
+        contas |= set(OpeningPosition.objects.values_list("account_id", flat=True))
+        ativos = Asset.objects.filter(
+            Q(events__active=True) | Q(opening_positions__isnull=False),
+        ).distinct()
+        for asset in ativos:
+            for account_id in contas:
                 pos = PositionService().position(account_id, asset)
                 if pos["quantity"]:
                     rows.append({"asset": asset, **pos})
