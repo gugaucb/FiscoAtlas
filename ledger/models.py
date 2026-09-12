@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from django.utils import timezone
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -326,6 +327,32 @@ class ImportIssue(models.Model):
 
     class Meta:
         ordering = ["batch", "line_number"]
+
+    def resolve_imported(self, event) -> None:
+        """P1 auditor: toda pendência resolúvel pela aplicação — vincular o
+        evento correspondente (mesma conta do lote) nunca exige SQL manual."""
+        if self.status != self.STATUS_PENDING:
+            raise ValueError(f"Pendência #{self.pk} já está resolvida ({self.status}).")
+        if event.account_id != self.batch.account_id:
+            raise ValueError(
+                "O evento vinculado deve pertencer à mesma conta do lote de importação."
+            )
+        self.status = self.STATUS_RESOLVED_IMPORTED
+        self.resolution = f"Evento #{event.pk} vinculado"
+        self.resolved_at = timezone.now()
+        self.save()
+
+    def resolve_ignored(self, reason: str) -> None:
+        """Ignorar exige justificativa registrada (nada some sem rastro)."""
+        if self.status != self.STATUS_PENDING:
+            raise ValueError(f"Pendência #{self.pk} já está resolvida ({self.status}).")
+        motivo = (reason or "").strip()
+        if not motivo:
+            raise ValueError("Justificativa é obrigatória para ignorar a pendência.")
+        self.status = self.STATUS_RESOLVED_IGNORED
+        self.resolution = motivo
+        self.resolved_at = timezone.now()
+        self.save()
 
     def __str__(self):
         return f"Issue #{self.pk} lote {self.batch_id} linha {self.line_number} ({self.status})"

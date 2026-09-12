@@ -2,6 +2,8 @@
 
 {% block content %}
 <h1>Importar extrato — {{ account }}</h1>
+<p><a href="{% url 'import-issues' account.id %}">Pendências de importação
+{% if pendencias_abertas %}({{ pendencias_abertas }} aberta(s)){% endif %}</a></p>
 
 <form method="get" class="card">
   <h2>Pré-visualizar</h2>

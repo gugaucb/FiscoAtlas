@@ -145,7 +145,14 @@ class StatementImportView(generic.View):
         from ledger.models import BrokerAccount
 
         conta = BrokerAccount.objects.get(pk=account_id)
-        ctx = {"account": conta, "preview": None, "csv_text": ""}
+        from ledger.models import ImportIssue
+
+        ctx = {
+            "account": conta, "preview": None, "csv_text": "",
+            "pendencias_abertas": ImportIssue.objects.filter(
+                batch__account=conta, status=ImportIssue.STATUS_PENDING,
+            ).count(),
+        }
         csv_text = request.GET.get("csv", "")
         if csv_text:
             from ledger.importers.schwab import SchwabStatementImporter

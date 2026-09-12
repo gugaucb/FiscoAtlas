@@ -1,6 +1,6 @@
 from django.urls import path
 
-from ledger import account_views, views
+from ledger import account_views, issue_views, views
 from ledger.opening_views import OpeningPositionCreateView
 
 urlpatterns = [
@@ -17,4 +17,5 @@ urlpatterns = [
     path("caixa/", views.CashView.as_view(), name="cash"),
     path("posicao-abertura/", OpeningPositionCreateView.as_view(), name="opening-position"),
     path("contas/<int:account_id>/importar/", views.StatementImportView.as_view(), name="import-statement"),
+    path("contas/<int:account_id>/pendencias/", issue_views.ImportIssuesView.as_view(), name="import-issues"),
 ]
