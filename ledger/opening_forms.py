@@ -26,11 +26,17 @@ class OpeningPositionForm(forms.ModelForm):
         self.fields["notes"].required = False
 
     def clean_asset_ticker(self):
+        """P0 do auditor: fim do get_or_create com asset_type='STOCK' — valor
+        fora da taxonomia legal (RF-AST-003/006) e criação silenciosa de ativo
+        sem classificação. Só ativo previamente cadastrado e ativo."""
         ticker = (self.cleaned_data.get("asset_ticker") or "").strip().upper()
-        asset, _ = Asset.objects.get_or_create(
-            ticker=ticker,
-            defaults={"description": ticker, "asset_type": "STOCK", "country_code": "US"},
-        )
+        asset = Asset.objects.filter(ticker=ticker, active=True).first()
+        if asset is None:
+            raise forms.ValidationError(
+                f"Ativo {ticker} não cadastrado (ou inativo). Cadastre e "
+                "classifique a natureza jurídica em /ativos/novo/ antes de "
+                "lançar a posição de abertura — sem criação automática."
+            )
         return asset
 
     def save(self, commit=True):
