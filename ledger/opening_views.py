@@ -29,5 +29,11 @@ class OpeningPositionCreateView(generic.CreateView):
         return ctx
 
     def form_valid(self, form):
+        from django.core.exceptions import ValidationError
+        try:
+            response = super().form_valid(form)
+        except ValidationError as e:
+            form.add_error(None, "; ".join(e.messages))
+            return self.form_invalid(form)
         messages.success(self.request, "Posição de abertura registrada.")
-        return super().form_valid(form)
+        return response

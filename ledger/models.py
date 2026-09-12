@@ -82,6 +82,25 @@ class BrokerAccount(models.Model):
         if not (Decimal("0.00") <= (self.ownership_share or Decimal(0)) <= Decimal(100)):
             raise ValidationError("ownership_share deve estar entre 0,00 e 100,00.")
 
+    # Ticket 30 (P0 do auditor): campos com efeito fiscal direto nos anos
+    # em que a conta participou (titularidade → rendimentos atribuídos,
+    # ganhos, patrimônio, crédito exterior; is_interest_bearing → isenção
+    # de caixa do relatório, IN RFB 2180/2024 art. 3º). Campos descritivos
+    # (name/apelido, broker_name etc.) permanecem editáveis.
+    CAMPOS_FISCAIS_ESTRUTURAIS = ("ownership_type", "ownership_share", "is_interest_bearing")
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            antigo = BrokerAccount.objects.get(pk=self.pk)
+            mudou = any(
+                getattr(self, campo) != getattr(antigo, campo)
+                for campo in self.CAMPOS_FISCAIS_ESTRUTURAIS
+            )
+            if mudou:
+                from fiscal.closing import assert_no_closed_year_affected_for_account
+                assert_no_closed_year_affected_for_account(self)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name or f"{self.broker_name} ({self.account_number})"
 
@@ -299,6 +318,19 @@ class OpeningPosition(models.Model):
     @property
     def average_cost_brl(self):
         return self.total_cost_brl / self.quantity if self.quantity else Decimal(0)
+
+    def save(self, *args, **kwargs):
+        # Ticket 30 (P0 do auditor): criar/alterar uma posição de abertura
+        # afeta custo fiscal, custo médio e ganho/prejuízo de TODOS os anos
+        # posteriores à data-base — não pode silenciar ano confirmado.
+        from fiscal.closing import assert_no_closed_year_affected_from
+        assert_no_closed_year_affected_from(self.reference_date)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from fiscal.closing import assert_no_closed_year_affected_from
+        assert_no_closed_year_affected_from(self.reference_date)
+        super().delete(*args, **kwargs)
 
 
 class DocumentedBalance(models.Model):
