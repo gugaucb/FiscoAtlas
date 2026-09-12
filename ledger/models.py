@@ -90,8 +90,9 @@ class BrokerAccount(models.Model):
         """P0 do auditor (24): desativar uma conta não apaga o passado
         fiscal dela. Contas ativas entram sempre; desativadas entram nos
         históricos do ano-calendário se tiverem atividade (eventos ativos
-        do ano, posição de abertura ou custódia na data-base). Formulários
-        de entrada continuam restritos a contas ativas."""
+        do ano, posição de abertura, custódia > 0 ou caixa ≠ 0 na
+        data-base — ticket 27). Formulários de entrada continuam
+        restritos a contas ativas."""
         ativas = list(cls.objects.filter(active=True))
         inativas = [
             c for c in cls.objects.filter(active=False)
@@ -101,8 +102,29 @@ class BrokerAccount(models.Model):
             or OpeningPosition.objects.filter(
                 account=c, reference_date__lte=yearend,
             ).exists()
+            or cls._tem_patrimonio_carregado(c, yearend)
         ]
         return sorted(ativas + inativas, key=lambda c: (c.broker_name, c.pk))
+
+    @staticmethod
+    def _tem_patrimonio_carregado(conta, yearend) -> bool:
+        """Ticket 27: patrimônio que atravessa anos sem evento — custódia
+        > 0 (posições dos eventos, não só OpeningPosition) ou caixa ≠ 0 na
+        data-base."""
+        from django.db.models import Q
+
+        from ledger.cash import CashLedgerService
+        from ledger.position import PositionService
+        if CashLedgerService().balance(conta, until=yearend) != 0:
+            return True
+        ativos = Asset.objects.filter(
+            Q(events__account=conta, events__active=True)
+            | Q(opening_positions__account=conta),
+        ).distinct()
+        for asset in ativos:
+            if PositionService().position(conta, asset, until=yearend)["quantity"] > 0:
+                return True
+        return False
 
 
 FOREIGN_TAX_STATES = [

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] `_conta_relevante` considera posição de custódia > 0 na data-base (PositionService), não só OpeningPosition explícita
+- [x] `_conta_relevante` considera posição de custódia > 0 na data-base (PositionService), não só OpeningPosition explícita
 - [ ] `historico_do_ano` inclui conta desativada com posição de custódia > 0 ou caixa ≠ 0 na data-base
 - [ ] Teste TDD: AAPL 2026, sem movimento 2027, caixa zero → reconciliação 2027 exige DocumentedBalance
 - [ ] Teste TDD: conta desativada com caixa carregado (sem evento no ano) → permanece no relatório 2027

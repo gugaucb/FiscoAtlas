@@ -161,8 +161,10 @@ class AnnualReconciliationService:
                 )
 
     def _conta_relevante(self, conta, data_base) -> bool:
-        """Só contas com atividade no ano (ou saldo, ou custódia carregada por
-        posição de abertura) precisam de reconciliação."""
+        """Só contas com atividade no ano (ou saldo, ou patrimônio carregado)
+        precisam de reconciliação. Ticket 27 (P0 do auditor): custódia > 0
+        na data-base conta MESMO sem evento no ano e sem OpeningPosition —
+        posição comprada em anos anteriores é custódia real."""
         return (
             FinancialEvent.objects.filter(
                 account=conta, active=True, trade_date__year=self.year,
@@ -171,4 +173,5 @@ class AnnualReconciliationService:
                 account=conta, reference_date__lte=data_base,
             ).exists()
             or CashLedgerService().balance(conta, until=data_base) != 0
+            or BrokerAccount._tem_patrimonio_carregado(conta, data_base)
         )
