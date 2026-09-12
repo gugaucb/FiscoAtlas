@@ -79,14 +79,19 @@ class ReportService:
             acc = attrib.setdefault(account.id, {"income_brl": Decimal(0), "custody_brl": Decimal(0)})
             balance_usd = CashLedgerService().balance(account, until=yearend)
             cash_brl = (balance_usd * ptax.rate).quantize(Decimal("0.01"))
+            fator_cash = OwnershipService.taxpayer_share_factor(account)
+            # Achado P0 do auditor (16): o campo fiscal do caixa é a fatia do
+            # contribuinte; o integral da conta fica como informação auxiliar.
+            cash_brl_attrib = (cash_brl * fator_cash).quantize(Decimal("0.01"))
             cash.append({
                 "account": account,
                 "balance_usd": balance_usd,
                 "balance_brl": cash_brl,
+                "balance_brl_attrib": cash_brl_attrib,
             })
             # auditoria-fiscal 06: caixa atribuível também passa pela fatia
             # do contribuinte (mesma fonte de verdade)
-            acc["cash_brl"] = (cash_brl * OwnershipService.taxpayer_share_factor(account)).quantize(Decimal("0.01"))
+            acc["cash_brl"] = cash_brl_attrib
             if not account.is_interest_bearing:
                 # Variação cambial de caixa não remunerado é isenta
                 # (IN RFB 2180/2024, art. 3º): saldo a PTAX 31/12 − custo BRL
@@ -96,9 +101,12 @@ class ReportService:
                     event_type__in=INFLOWS, trade_date__year=self.year,
                 ).aggregate(t=Sum("amount_brl"))["t"] or Decimal(0)
                 variation = (balance_usd * ptax.rate).quantize(Decimal("0.01")) - inflows_brl
+                # Achado P0 do auditor (16): isenção também é fatia do
+                # contribuinte (declaração é individual)
                 exempt_accounts.append({
                     "account": account,
-                    "exempt_brl": max(variation, Decimal("0.00")),
+                    "exempt_brl": (max(variation, Decimal("0.00"))
+                                   * OwnershipService.taxpayer_share_factor(account)).quantize(Decimal("0.01")),
                 })
             from django.db.models import Q
             from ledger.models import OpeningPosition

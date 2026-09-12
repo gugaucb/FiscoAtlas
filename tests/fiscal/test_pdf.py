@@ -13,6 +13,7 @@ def _report():
         "assets": [{
             "ticker": "AAPL", "description": "Apple Inc.", "asset_type": "STOCK",
             "quantity": 25, "avg_cost_usd": 180, "cost_brl_total": 24444.45,
+            "cost_brl_attrib": 12222.22, "prev_cost_brl_attrib": 7500,
             "prev_cost_brl": 15000, "cost_usd_total": 4500, "ptax_media": 5.4321,
             "grupo_codigo": "03/01", "country_code_rfb": "249",
             "country_name": "Estados Unidos", "cost_usd_text": "US$ 4.500,00",
@@ -21,7 +22,7 @@ def _report():
             "gains_brl": 1500, "losses_brl": 300,
         }],
         "cash": [{"account": mock.Mock(broker_name="Avenue Securities LLC", account_number="123"),
-                  "balance_usd": 4297, "balance_brl": 21485}],
+                  "balance_usd": 4297, "balance_brl": 21485, "balance_brl_attrib": 10742.50}],
         "income": {"income_brl": 2020, "loss_brl": 300, "taxable_brl": 1720, "tax_brl": 258,
                    "withholding_credit_brl": 246, "tax_due_brl": 12, "loss_carryforward_brl": 0},
         "ptax_yearend": {"rate": 5, "effective_date": "2026-12-31"},
@@ -59,3 +60,9 @@ def test_render_pdf_target_layout():
     assert "PTAX média" in text
     assert "RENDIMENTOS ISENTOS" in text
     assert "art. 3º" in text
+    # Achado P0 do auditor (16): campos fiscais levam a fatia do contribuinte
+    assert "fatia do contribuinte" in text
+    assert "R$ 10.742,50" in text   # caixa — valor para declaração (50%)
+    assert "R$ 12.222,22" in text   # custódia — custo fiscal (50%)
+    assert "R$ 7.500,00" in text    # situação 31/12/2025 (50%)
+    assert "Integral da conta (auxiliar)" in text
