@@ -5,7 +5,7 @@ import pytest
 from fiscal.models import TaxRule
 from fiscal.report import ReportService
 from fx.service import PtaxService
-from ledger.models import Asset, BrokerAccount
+from ledger.models import Asset, BrokerAccount, OpeningPosition
 from ledger.service import EventService
 
 RATE = Decimal("5.00000000")
@@ -42,3 +42,32 @@ def test_build_report(setup):
     assert report["cash"][0]["balance_usd"] == Decimal("4297.00000000")
     assert report["cash"][0]["balance_brl"] == Decimal("21485.00000000")
     assert report["income"]["tax_due_brl"] == Decimal("73.50")  # ganho AAPL 98×5=490 × 15%
+
+
+@pytest.mark.django_db
+def test_relatorio_patrimonio_separa_integral_e_atribuivel(setup):
+    """P0 titularidade no patrimônio (auditor): numa conta conjunta 50%, o
+    relatório deve exibir R$ 100 mil como valor INTEGRAL da conta e R$ 50 mil
+    como valor ATRIBUÍVEL ao contribuinte — nunca o integral como valor fiscal
+    do contribuinte (mesma fonte de verdade do engine: OwnershipService)."""
+    acct = setup
+    conjunta = BrokerAccount.objects.create(
+        broker_name="Conjunta", account_number="999",
+        ownership_type="JOINT", ownership_share=Decimal("50.00"),
+    )
+    tsla = Asset.objects.create(ticker="TSLA", description="Tesla", asset_type="FOREIGN_EQUITY")
+    OpeningPosition.objects.create(
+        account=conjunta, asset=tsla, quantity=Decimal(100), total_cost_brl=Decimal(100000),
+    )
+    with mock.patch.object(PtaxService, "get_rate") as get_rate:
+        get_rate.return_value = mock.Mock(rate=RATE, effective_date=date(2026, 12, 31))
+        report = ReportService(2026).build()
+    tsla_row = next(a for a in report["assets"] if a["ticker"] == "TSLA")
+    assert tsla_row["cost_brl_total"] == Decimal(100000)
+    assert tsla_row["cost_brl_attrib"] == Decimal(50000)
+    # abertura em 31/12/2025 já integra a situação do exercício anterior
+    assert tsla_row["prev_cost_brl"] == Decimal(100000)
+    assert tsla_row["prev_cost_brl_attrib"] == Decimal(50000)
+    assert tsla_row["share_pct"] == Decimal("50.00")
+    attrib = next(o for o in report["ownership_attribution"] if o["account"] == conjunta)
+    assert attrib["custody_brl_attrib"] == Decimal(50000)
