@@ -40,7 +40,7 @@ class ImportIssuesView(generic.View):
                 event_pk = (request.POST.get("event_pk") or "").strip()
                 if not event_pk.isdigit():
                     raise ValueError("Informe o ID do evento lançado (número inteiro).")
-                evento = FinancialEvent.objects.get(pk=int(event_pk), account=conta)
+                evento = FinancialEvent.objects.get(pk=int(event_pk), account=conta, active=True)
                 issue.resolve_imported(evento)
                 messages.success(request, f"Pendência linha {issue.line_number}: evento #{evento.pk} vinculado.")
             elif acao == "ignorar":

@@ -47,7 +47,13 @@
   {% for issue in resolvidos %}
   <tr>
     <td>{{ issue.batch_id }}</td><td>{{ issue.line_number }}</td><td>{{ issue.raw_action }}</td>
-    <td>{{ issue.get_status_display }}</td><td>{{ issue.resolution }}</td>
+    <td>{{ issue.get_status_display }}</td>
+    <td>
+      {{ issue.resolution }}
+      {% if issue.resolved_event_id %}
+        (<a href="{% url 'event-correct' issue.resolved_event_id %}">evento #{{ issue.resolved_event_id }}</a>)
+      {% endif %}
+    </td>
     <td>{{ issue.resolved_at|date:"d/m/Y H:i" }}</td>
   </tr>
   {% empty %}

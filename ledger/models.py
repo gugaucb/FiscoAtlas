@@ -316,6 +316,12 @@ class ImportIssue(models.Model):
     ]
 
     batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="issues")
+    # P1 auditor: RESOLVED_IMPORTED aponta para o lançamento correspondente
+    # por FK real (trilha fiscal auditável), não por ID gravado em string.
+    resolved_event = models.ForeignKey(
+        FinancialEvent, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="resolved_import_issues",
+    )
     line_number = models.PositiveIntegerField()
     raw_action = models.CharField(max_length=128, blank=True)
     raw_data = models.JSONField(default=dict)
@@ -330,13 +336,17 @@ class ImportIssue(models.Model):
 
     def resolve_imported(self, event) -> None:
         """P1 auditor: toda pendência resolúvel pela aplicação — vincular o
-        evento correspondente (mesma conta do lote) nunca exige SQL manual."""
+        evento correspondente (mesma conta do lote, ativo) nunca exige SQL
+        manual. Evento desativado/corrigido não é lançamento fiscal válido."""
         if self.status != self.STATUS_PENDING:
             raise ValueError(f"Pendência #{self.pk} já está resolvida ({self.status}).")
+        if not event.active:
+            raise ValueError("O evento vinculado deve estar ativo.")
         if event.account_id != self.batch.account_id:
             raise ValueError(
                 "O evento vinculado deve pertencer à mesma conta do lote de importação."
             )
+        self.resolved_event = event
         self.status = self.STATUS_RESOLVED_IMPORTED
         self.resolution = f"Evento #{event.pk} vinculado"
         self.resolved_at = timezone.now()
