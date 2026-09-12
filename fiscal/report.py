@@ -141,7 +141,12 @@ class ReportService:
                 gains_brl *= fator
                 losses_brl *= fator
                 acc["income_brl"] += (dividends_brl + gains_brl - losses_brl).quantize(Decimal("0.01"))
-                acc["custody_brl"] += pos["cost_brl_total"]
+                # P0 titularidade no patrimônio: a custódia acumulada para a
+                # atribuição usa a MESMA fatia do contribuinte que rendimentos
+                # e ganhos (OwnershipService) — o valor integral da conta é
+                # exibido como referência, jamais como valor fiscal do
+                # contribuinte.
+                acc["custody_brl"] += (pos["cost_brl_total"] * fator).quantize(Decimal("0.01"))
                 if pos["quantity"]:
                     prev = PositionService().position(account, asset, until=prev_yearend)
                     cost_usd_total = (pos["avg_cost_usd"] * pos["quantity"]).quantize(Decimal("0.01"))
@@ -151,6 +156,9 @@ class ReportService:
                     ).quantize(Decimal("0.00000001"))
                     assets.append({
                         "asset": asset, **pos,
+                        "share_pct": account.ownership_share,
+                        "cost_brl_attrib": (pos["cost_brl_total"] * fator).quantize(Decimal("0.01")),
+                        "prev_cost_brl_attrib": (prev["cost_brl_total"] * fator).quantize(Decimal("0.01")),
                         "prev_cost_brl": prev["cost_brl_total"],
                         "cost_usd_total": cost_usd_total,
                         "ptax_media": ptax_media,
@@ -228,6 +236,9 @@ class ReportService:
                 {"ticker": a["asset"].ticker, "description": a["asset"].description,
                  "asset_type": a["asset"].asset_type, "quantity": a["quantity"],
                  "avg_cost_usd": a["avg_cost_usd"], "cost_brl_total": a["cost_brl_total"],
+                 "share_pct": a["share_pct"],
+                 "cost_brl_attrib": a["cost_brl_attrib"],
+                 "prev_cost_brl_attrib": a["prev_cost_brl_attrib"],
                  "prev_cost_brl": a["prev_cost_brl"], "cost_usd_total": a["cost_usd_total"],
                  "ptax_media": a["ptax_media"], "dividends_brl": a["dividends_brl"],
                  "withholding_brl": a["withholding_brl"], "gains_brl": a["gains_brl"],
@@ -240,6 +251,11 @@ class ReportService:
                      f"{a['quantity']} de {a['asset'].description} ({a['asset'].ticker}), "
                      f"custo total de aquisição US$ {a['cost_usd_total']:,.2f}, "
                      f"custo fiscal R$ {a['cost_brl_total']:,.2f}"
+                     + (
+                         f" (fatia do contribuinte {a['share_pct']:,.0f}%: "
+                         f"R$ {a['cost_brl_attrib']:,.2f})"
+                         if a["cost_brl_attrib"] != a["cost_brl_total"] else ""
+                     )
                  ).replace(",", "X").replace(".", ",").replace("X", "."),
              }
                 for a in assets

@@ -186,12 +186,12 @@
   </p>
   <table>
     <thead>
-    <tr><th>Quantidade</th><th>Custo aquisição USD</th><th>PTAX média</th><th>Custo fiscal BRL</th></tr>
+    <tr><th>Quantidade</th><th>Custo aquisição USD</th><th>PTAX média</th><th>Custo fiscal BRL (integral da conta)</th><th>Fatia do contribuinte ({{ a.share_pct }}%)</th></tr>
     </thead>
     <tbody>
-    <tr><td class="num">{{ a.quantity }}</td><td class="money">{{ a.cost_usd_total }}</td><td class="num">{{ a.ptax_media }}</td><td class="money">{{ a.cost_brl_total }}</td></tr>
-    <tr><th scope="row">Situação 31/12/{{ report.year|add:"-1" }}</th><td colspan="3" class="money">R$ {{ a.prev_cost_brl }}</td></tr>
-    <tr><th scope="row">Situação 31/12/{{ report.year }}</th><td colspan="3" class="money">R$ {{ a.cost_brl_total }}</td></tr>
+    <tr><td class="num">{{ a.quantity }}</td><td class="money">{{ a.cost_usd_total }}</td><td class="num">{{ a.ptax_media }}</td><td class="money">{{ a.cost_brl_total }}</td><td class="money">{{ a.cost_brl_attrib }}</td></tr>
+    <tr><th scope="row">Situação 31/12/{{ report.year|add:"-1" }}</th><td colspan="3" class="money">R$ {{ a.prev_cost_brl }}</td><td class="money">R$ {{ a.prev_cost_brl_attrib }}</td></tr>
+    <tr><th scope="row">Situação 31/12/{{ report.year }}</th><td colspan="3" class="money">R$ {{ a.cost_brl_total }}</td><td class="money">R$ {{ a.cost_brl_attrib }}</td></tr>
     </tbody>
   </table>
   <h4>Aplicação financeira</h4>
