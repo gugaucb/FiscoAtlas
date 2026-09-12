@@ -93,6 +93,11 @@
 {% if report.cbe %}
 <div class="card" role="status">
   <h2>CBE — Banco Central (Res. BCB nº 279/2022)</h2>
+  <p class="page-sub"><strong>Escopo:</strong> o FiscoAtlas atende patrimônio exterior <strong>abaixo de
+    US$ 300.000</strong> — abaixo do limite de obrigatoriedade anual da CBE (US$ 1.000.000). Com esse
+    perfil a declaração ao Banco Central <strong>não é obrigatória</strong>; os valores exibidos são
+    apenas apoio informativo e a CBE (se aplicável por acúmulo em outros capitais) é responsabilidade
+    do contribuinte junto ao BCB — o sistema não é um calculador de CBE completo.</p>
   <p>
     Anual (data-base 31/12): US$ {{ report.cbe.total_usd|default_if_none:"—" }} —
     {% if report.cbe.status == "CBE_REQUIRED" %}
