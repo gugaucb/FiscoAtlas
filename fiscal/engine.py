@@ -6,7 +6,7 @@ from django.db.models import Q
 from fiscal.date_rules import TaxDateResolver, fiscal_year_q, income_fiscal_year_q
 from fiscal.foreign_tax import ForeignTaxCreditService
 from fiscal.losses import LossLedgerService
-from fiscal.models import AnnualAssessment, Profile, TaxRule
+from fiscal.models import AnnualAssessment, LossRecord, Profile, TaxRule
 from fx.service import PtaxService
 from ledger.models import Asset, FinancialEvent
 from ledger.ownership import OwnershipService
@@ -240,9 +240,15 @@ class TaxEngine:
         registros = LossLedgerService.open_records(self.year - 1)
         if registros:
             loss_inherited = sum((r.remaining_brl for r in registros), ZERO)
-        else:
+        elif not LossRecord.objects.filter(origin_year__lte=self.year - 1).exists():
+            # fallback legado só quando o ledger NÃO conhece os anos
+            # anteriores; se houver registros (mesmo filtrados — ex. perda
+            # de evento corrigido, achado P0 do auditor), o scalar do
+            # AnnualAssessment anterior não pode reverter a exclusão.
             prev = AnnualAssessment.objects.filter(year=self.year - 1).first()
             loss_inherited = prev.loss_carryforward_brl if prev else ZERO
+        else:
+            loss_inherited = ZERO
         total_loss_available = loss + loss_inherited
 
         taxable = max(income - total_loss_available, ZERO)

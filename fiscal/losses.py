@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 
 from fiscal.models import AnnualAssessment, LossCompensation, LossRecord
 
@@ -40,9 +41,16 @@ class LossLedgerService:
 
     @staticmethod
     def open_records(until_year: int):
-        """Saldos abertos com origem até o ano informado, FIFO (mais antigo primeiro)."""
+        """Saldos abertos com origem até o ano informado, FIFO (mais antigo primeiro).
+
+        Achado P0 do auditor: perda cujo source_event foi desativado
+        (corrigido) não é lançamento fiscal válido — sai da compensação.
+        A correção da venda gera um novo evento, que registra sua própria
+        perda; a perda fantasma do evento antigo não pode reduzir imposto
+        futuro. Registros sem source_event (manual/legado) permanecem."""
         return list(
             LossRecord.objects.filter(
+                Q(source_event__isnull=True) | Q(source_event__active=True),
                 origin_year__lte=until_year, remaining_brl__gt=0,
             ).order_by("origin_year", "id")
         )

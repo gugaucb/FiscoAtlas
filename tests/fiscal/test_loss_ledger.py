@@ -148,6 +148,49 @@ def test_engine_discrimina_origem_da_perda_herdada(db, residente, rules):
     assert resultado["loss_inherited_brl"] == Decimal(1500)
 
 
+def test_perda_de_evento_inativo_nao_compensa(db, residente, rules):
+    """Achado P0 do auditor: venda corrigida/desativada não deixa perda
+    fantasma no ledger — evento active=False deixa de ser lançamento fiscal
+    válido e sua perda sai da compensação FIFO (a correção gera um novo
+    evento, com seu próprio LossRecord)."""
+    conta = _conta(2024)
+    asset = Asset.objects.create(ticker="NVDA", description="Nvidia", asset_type="FOREIGN_EQUITY")
+    ev = _buy_sell(conta, asset, 2024, sell_price=Decimal(70))  # perda 1.500
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        TaxEngine(2024).save_snapshot(2024)
+    assert LossLedgerService.available(2024) == Decimal("1500.00")
+    ev.active = False
+    ev.save(update_fields=["active"])
+    assert LossLedgerService.open_records(2024) == []
+    assert LossLedgerService.available(2024) == Decimal("0.00")
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        resultado = TaxEngine(2025).compute()
+    assert resultado["loss_inherited_brl"] == Decimal(0)
+
+
+def test_perda_sem_source_event_permanece_compensavel(db, residente, rules):
+    """Registros manuais/legados sem source_event não são afetados pelo filtro."""
+    LossLedgerService.record_loss(2024, Decimal(2000))
+    assert LossLedgerService.available(2024) == Decimal("2000.00")
+
+
+def test_compensacao_de_evento_inativo_e_devolvida_no_refechamento(db, residente, rules):
+    """Refechamento devolve a compensação e não a re-consumir — a perda de
+    evento desativado some do FIFO em vez de reduzir imposto de novo."""
+    conta = _conta(2024)
+    asset = Asset.objects.create(ticker="NVDA", description="Nvidia", asset_type="FOREIGN_EQUITY")
+    ev = _buy_sell(conta, asset, 2024, sell_price=Decimal(70))  # perda 1.500
+    with mock.patch("fiscal.engine.PtaxService.get_rate", return_value=mock.Mock(rate=RATE)):
+        TaxEngine(2024).save_snapshot(2024)
+    compensado = LossLedgerService.apply_compensation(2025, Decimal(1500))
+    assert compensado == Decimal("1500.00")
+    ev.active = False
+    ev.save(update_fields=["active"])
+    compensado = LossLedgerService.apply_compensation(2025, Decimal(1500))
+    assert compensado == Decimal("0.00")
+    assert LossCompensation.objects.filter(year=2025).count() == 0
+
+
 def test_sem_registros_cai_no_scalar_do_ano_anterior(db, residente, rules):
     """Transição: dados legados (snapshot sem LossRecord) continuam compensando."""
     AnnualAssessment.objects.create(
