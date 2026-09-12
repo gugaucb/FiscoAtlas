@@ -1,4 +1,6 @@
 """Auditoria-fiscal 12: formulário do saldo documental da data-base."""
+from decimal import Decimal, InvalidOperation
+
 from django import forms
 
 from ledger.models import DocumentedBalance
@@ -35,8 +37,15 @@ class DocumentedBalanceForm(forms.ModelForm):
         self.fields["source_reference"].required = False
 
     def clean_positions_text(self):
+        """Achado P1 do auditor (18): a quantidade é convertida para Decimal
+        aqui, na fronteira — a reconciliação faz Decimal(str(...)) e uma
+        string não numérica quebrava o fechamento com InvalidOperation em
+        vez de erro de validação claro. Quantidade negativa e ticker
+        duplicado também são rejeitados (duplicado sobrescrevia em
+        silêncio no confronto)."""
         texto = self.cleaned_data.get("positions_text") or ""
         posicoes = []
+        tickers = set()
         for linha in texto.strip().splitlines():
             if not linha.strip():
                 continue
@@ -45,7 +54,27 @@ class DocumentedBalanceForm(forms.ModelForm):
                 raise forms.ValidationError(
                     f"Linha inválida: '{linha}'. Use TICKER, QUANTIDADE."
                 )
-            posicoes.append({"ticker": partes[0].upper(), "quantity": partes[1]})
+            ticker, quantidade_texto = partes[0].upper(), partes[1]
+            try:
+                quantidade = Decimal(quantidade_texto)
+            except InvalidOperation:
+                raise forms.ValidationError(
+                    f"Linha inválida: '{linha}' — quantidade '{quantidade_texto}' "
+                    "não é um número."
+                )
+            if quantidade < 0:
+                raise forms.ValidationError(
+                    f"Linha inválida: '{linha}' — quantidade não pode ser negativa."
+                )
+            if ticker in tickers:
+                raise forms.ValidationError(
+                    f"Ticker duplicado: '{ticker}' aparece em mais de uma linha."
+                )
+            tickers.add(ticker)
+            # positions é JSONField (sem Decimal serializável) — grava a
+            # string numérica já validada; a reconciliação converte com
+            # Decimal(str(...)) sem risco de InvalidOperation.
+            posicoes.append({"ticker": ticker, "quantity": str(quantidade)})
         return posicoes
 
     def clean(self):
