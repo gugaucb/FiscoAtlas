@@ -38,8 +38,14 @@ class AccountUpdateView(generic.UpdateView):
     queryset = BrokerAccount.objects.all()
 
     def form_valid(self, form):
+        from django.core.exceptions import ValidationError
+        try:
+            response = super().form_valid(form)
+        except ValidationError as e:
+            form.add_error(None, "; ".join(e.messages))
+            return self.form_invalid(form)
         messages.success(self.request, "Conta atualizada.")
-        return super().form_valid(form)
+        return response
 
 
 class AccountDeactivateView(generic.View):
