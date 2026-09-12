@@ -183,7 +183,7 @@ class ReportService:
         assets.sort(key=lambda a: a["asset"].ticker)
         income = TaxEngine(self.year).compute()
         # Evidência do crédito de imposto pago no exterior por rendimento:
-        # limite de 15% sobre o bruto (Lei 14.754/2023, art. 5º); crédito
+        # limite de 15% sobre o bruto (Lei 14.754/2023, art. 4º); crédito
         # excedente é descartado (sem carryforward de crédito).
         rate = Decimal(income["rule"].brackets[-1]["rate"])
         income["credit_detail"] = [
