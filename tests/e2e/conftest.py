@@ -100,7 +100,8 @@ def seed_8_eventos(page, live_server):
                                                 "foreign_tax_payment_date": "2026-03-20",
                                                 "date_evidence_source": "BROKER_STATEMENT",
                                                 "country_code": "US", "jurisdiction_level": "FEDERAL",
-                                                "tax_type": "WITHHOLDING_INCOME_TAX"})
+                                                "tax_type": "WITHHOLDING_INCOME_TAX",
+                                                "recoverability_status": "NON_RECOVERABLE"})
     novo_evento(page, live_server, "SELL", {"trade_date": "2026-06-10", "asset_ticker": "AAPL",
                                             "quantity": "40", "price_usd": "120", "fee_usd": "1"})
     novo_evento(page, live_server, "JUROS", {"trade_date": "2026-07-01", "amount_usd": "500"})

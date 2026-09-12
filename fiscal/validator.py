@@ -156,7 +156,7 @@ class AnnualClosingValidator:
         for p in desconhecidos:
             self.violations.append(
                 f"Imposto pago no exterior ({p}) com fatos fiscais desconhecidos "
-                f"(jurisdição/tipo/evidência) — classifique em "
+                f"(jurisdição/tipo/evidência/recuperabilidade) — classifique em "
                 f"/imposto-exterior/{p.pk}/editar/ antes de fechar o ano. "
                 "Sem classificação explícita, o crédito não é aproveitado "
                 "(sem regra fiscal silenciosa)."

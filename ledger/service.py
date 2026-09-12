@@ -15,6 +15,7 @@ FOREIGN_TAX_FIELDS = (
     "foreign_tax_payment_date", "confirm_same_day", "country_code",
     "jurisdiction_level", "tax_type", "capture_method",
     "date_evidence_source", "source_document_id", "source_reference",
+    "recoverability_status",
 )
 
 
@@ -158,6 +159,7 @@ class EventService:
             "date_evidence_source": evidencia,
             "source_document_id": data.get("source_document_id") or "",
             "source_reference": data.get("source_reference") or "",
+            "recoverability_status": data.get("recoverability_status") or "UNKNOWN",
         }
 
 

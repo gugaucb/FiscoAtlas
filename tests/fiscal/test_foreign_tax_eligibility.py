@@ -43,6 +43,7 @@ def _dividendo(conta, **extra):
         tax_usd=Decimal(30), foreign_tax_payment_date=date(2026, 3, 10),
         date_evidence_source="BROKER_STATEMENT", country_code="US",
         jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+        recoverability_status="NON_RECOVERABLE",
     )
     base.update(extra)
     with mock.patch.object(EventService, "_ptax_rate", return_value=RATE):
@@ -132,3 +133,33 @@ def test_evento_legado_sem_pagamento_tem_credito_zero(setup):
     resultado = _compute()
     assert resultado["withholding_credit_brl"] == Decimal("0.00")
     assert resultado["ineligible_foreign_tax_brl"] == Decimal("150.00")
+
+
+def test_imposto_recuperavel_gera_credito_zero(setup):
+    """P0 do auditor (Lei 14.754/2023, art. 4º; IN RFB 2.180/2024): o crédito
+    é só para imposto pago em CARÁTER DEFINITIVO — federal americano
+    documentalmente correto, porém RECUPERÁVEL (restituição/reembolso/
+    compensação no exterior), produz crédito brasileiro ZERO."""
+    _dividendo(setup, jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+               recoverability_status="RECOVERABLE")
+    resultado = _compute()
+    assert resultado["withholding_credit_brl"] == Decimal("0.00")
+    # segregado como inelegível (não desaparece do relatório)
+    assert resultado["ineligible_foreign_tax_brl"] == Decimal("150.00")
+
+
+def test_recuperabilidade_unknown_bloqueia_fechamento(setup):
+    """Sem declaração da recuperabilidade (default UNKNOWN) o fechamento é
+    bloqueado com orientação — retenção zero de julgamento não existe."""
+    from fiscal.validator import AnnualClosingValidator
+    from django.core.exceptions import ValidationError
+    pagamento = _dividendo(setup, jurisdiction_level="FEDERAL",
+                           tax_type="WITHHOLDING_INCOME_TAX",
+                           recoverability_status="UNKNOWN").foreign_tax_payments.get()
+    assert pagamento.recoverability_status == "UNKNOWN"
+    with pytest.raises(ValidationError, match="(?i)recuperabilidade"):
+        AnnualClosingValidator(2026).validate_or_raise()
+    # classificado como definitivo → fechamento passa
+    pagamento.recoverability_status = "NON_RECOVERABLE"
+    pagamento.save()
+    AnnualClosingValidator(2026).validate_or_raise()  # não levanta

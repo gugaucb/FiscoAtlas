@@ -153,6 +153,14 @@ DATE_EVIDENCE_SOURCES = [
     ("USER_CONFIRMED", "Confirmação do usuário"),
     ("UNKNOWN", "Desconhecida"),
 ]
+# P0 do auditor (Lei 14.754/2023, art. 4º; IN RFB 2.180/2024): o crédito
+# aproveitável é o imposto pago em CARÁTER DEFINITIVO — tributo passível de
+# restituição/reembolso/compensação no exterior não é definitivo.
+RECOVERABILITY_STATUSES = [
+    ("NON_RECOVERABLE", "Não recuperável (caráter definitivo)"),
+    ("RECOVERABLE", "Recuperável no exterior (restituição/reembolso/compensação)"),
+    ("UNKNOWN", "Desconhecida — classifique antes de fechar o ano"),
+]
 
 
 class ForeignTaxPayment(models.Model):
@@ -172,6 +180,9 @@ class ForeignTaxPayment(models.Model):
     tax_type = models.CharField(max_length=32, choices=TAX_TYPES)
     capture_method = models.CharField(max_length=16, choices=CAPTURE_METHODS)
     date_evidence_source = models.CharField(max_length=32, choices=DATE_EVIDENCE_SOURCES)
+    recoverability_status = models.CharField(
+        max_length=20, choices=RECOVERABILITY_STATUSES, default="UNKNOWN",
+    )
     source_document_id = models.CharField(max_length=128, blank=True)
     source_reference = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

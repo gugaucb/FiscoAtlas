@@ -3,11 +3,12 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
-from ledger.models import ForeignTaxPayment, ForeignTaxPaymentAudit
+from ledger.models import ForeignTaxPayment, ForeignTaxPaymentAudit, RECOVERABILITY_STATUSES
 
 EDITABLE_FIELDS = (
     "tax_usd", "country_code", "foreign_tax_payment_date", "jurisdiction_level",
-    "tax_type", "date_evidence_source", "source_document_id", "source_reference",
+    "tax_type", "date_evidence_source", "recoverability_status",
+    "source_document_id", "source_reference",
 )
 
 
@@ -29,9 +30,20 @@ class ForeignTaxPaymentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # opcional: se não informado, mantém o valor atual (default UNKNOWN)
+        self.fields["recoverability_status"] = forms.ChoiceField(
+            choices=RECOVERABILITY_STATUSES, required=False,
+            label="Recuperabilidade no exterior",
+            help_text="O imposto só gera crédito brasileiro se pago em caráter "
+            "definitivo (não passível de restituição/reembolso/compensação).",
+        )
         self._old_values = {
             field: getattr(self.instance, field) for field in EDITABLE_FIELDS
         }
+
+    def clean_recoverability_status(self):
+        valor = self.cleaned_data.get("recoverability_status")
+        return valor or self.instance.recoverability_status or "UNKNOWN"
 
     def clean_reason(self):
         motivo = (self.cleaned_data.get("reason") or "").strip()

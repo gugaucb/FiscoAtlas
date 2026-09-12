@@ -56,6 +56,7 @@ def _dividendo_com_imposto(conta, tax_usd=Decimal(10), per_share=Decimal(1)):
             foreign_tax_payment_date=date(2026, 3, 1), confirm_same_day=False,
             date_evidence_source="BROKER_STATEMENT", country_code="US",
             jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+            recoverability_status="NON_RECOVERABLE",
         ))
     return ev
 

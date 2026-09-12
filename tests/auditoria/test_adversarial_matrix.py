@@ -200,7 +200,8 @@ def test_retencao_30_por_cento_nao_bloqueia_e_credito_limitado(ambiente):
     _evento(conta, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 6, 15),
             quantity=Decimal(100), per_share_usd=Decimal(10), tax_usd=Decimal(30),
             foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT",
-            country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX")
+            country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+            recoverability_status="NON_RECOVERABLE")
     r = _compute(TaxEngine(2026))
     assert r["withholding_credit_brl"] == Decimal("150.00")  # pago 150 < limite 750
     assert r["tax_brl"] == Decimal("750.00")
@@ -282,7 +283,8 @@ def test_dois_pagamentos_de_imposto_no_mesmo_rendimento(ambiente):
     ev = _evento(conta, event_type="DIVIDEND", asset=aapl, trade_date=date(2026, 6, 15),
                  quantity=Decimal(100), per_share_usd=Decimal(10), tax_usd=Decimal(15),
                  foreign_tax_payment_date=date(2026, 6, 15), date_evidence_source="BROKER_STATEMENT",
-                 country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX")
+                 country_code="US", jurisdiction_level="FEDERAL", tax_type="WITHHOLDING_INCOME_TAX",
+                 recoverability_status="NON_RECOVERABLE")
     ForeignTaxPayment.objects.create(
         financial_event=ev, tax_usd=Decimal(5),
         foreign_tax_payment_date=date(2026, 6, 15), country_code="US",
