@@ -18,7 +18,9 @@ class PositionService:
         if until and until < OPENING_DATE:
             return {"quantity": Decimal(0), "cost_brl": Decimal(0)}
         op = (
-            OpeningPosition.objects.filter(account=account, asset=asset)
+            OpeningPosition.objects.filter(
+                account=account, asset=asset, reference_date__lte=until or date_cls.max,
+            )
             .order_by("-reference_date")
             .first()
         )
@@ -26,7 +28,10 @@ class PositionService:
             return {"quantity": op.quantity, "cost_brl": op.total_cost_brl}
         # Legado: abertura sem conta só se a atribuição for inequívoca.
         legacy = (
-            OpeningPosition.objects.filter(account__isnull=True, asset=asset)
+            OpeningPosition.objects.filter(
+                account__isnull=True, asset=asset,
+                reference_date__lte=until or date_cls.max,
+            )
             .order_by("-reference_date")
             .first()
         )

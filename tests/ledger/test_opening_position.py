@@ -73,3 +73,29 @@ def test_report_includes_opening_position_in_assets(acct_asset):
     assert len(a) == 1
     assert a[0]["quantity"] == Decimal(100)
     assert a[0]["cost_brl_total"] == Decimal(95000)
+
+
+@pytest.mark.django_db
+def test_position_until_respeita_data_da_abertura(acct_asset):
+    """P0 do auditor: _opening escolhia a abertura mais recente GLOBALMENTE —
+    uma OpeningPosition com reference_date posterior ao until contaminava a
+    posição histórica. position(until=data) só considera aberturas com
+    reference_date <= data."""
+    acct, asset = acct_asset
+    OpeningPosition.objects.create(
+        account=acct, asset=asset, reference_date=date(2025, 12, 31),
+        quantity=Decimal(100), total_cost_brl=Decimal(95000),
+    )
+    pos = PositionService().position(acct, asset, until=date(2026, 1, 31))
+    assert pos["quantity"] == Decimal(100)
+    # abertura datada APÓS o until não entra na posição daquele mês
+    OpeningPosition.objects.create(
+        account=acct, asset=asset, reference_date=date(2026, 2, 15),
+        quantity=Decimal(60), total_cost_brl=Decimal(60000),
+    )
+    pos_jan = PositionService().position(acct, asset, until=date(2026, 1, 31))
+    assert pos_jan["quantity"] == Decimal(100)   # abertura de 31/12/2025
+    assert pos_jan["cost_brl_total"] == Decimal(95000)
+    pos_fev = PositionService().position(acct, asset, until=date(2026, 2, 28))
+    assert pos_fev["quantity"] == Decimal(60)    # abertura mais recente <= until
+    assert pos_fev["cost_brl_total"] == Decimal(60000)
