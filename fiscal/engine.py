@@ -129,7 +129,7 @@ class TaxEngine:
         detail = []
         income = ZERO
         loss = ZERO
-        credit = ZERO
+        credit_potencial = ZERO
         ineligible_foreign_tax = ZERO
         pagamentos = _pagamentos_por_evento(events)
         # RF-FTC-009: estornos de retenção do ano reduzem o crédito do rendimento
@@ -222,12 +222,18 @@ class TaxEngine:
                     refund_restante = refund_brl - deducao
                     ineligible_wh = max(ineligible_wh - refund_restante, ZERO)
                 wh_brl = eligible_wh + ineligible_wh
-                used = min(eligible_wh, (gross_brl * rate).quantize(Decimal("0.01")))
-                credit += used
+                # crédito potencial: limite de 15% por rendimento — o
+                # aproveitamento EFETIVO é limitado depois, pelo IR devido
+                # do ano (após prejuízos), achado P0 do auditor
+                potencial = min(eligible_wh, (gross_brl * rate).quantize(Decimal("0.01")))
+                credit_potencial += potencial
                 ineligible_foreign_tax += ineligible_wh
                 detail.append({
                     "event": ev, "kind": ev.event_type.lower(), "gross_brl": gross_brl,
-                    "withholding_brl": wh_brl, "credit_used": used,
+                    "withholding_brl": wh_brl,
+                    "credit_eligible_brl": eligible_wh,
+                    "credit_potential": potencial,
+                    "credit_used": potencial,  # ajustado pelo teto global abaixo
                     "credit_eligible": eligible_wh > 0,
                     "fx_income": fx, "fx_tax": fx_tax_last,
                     "tax_payment_date": tax_date_last,
@@ -254,6 +260,18 @@ class TaxEngine:
         taxable = max(income - total_loss_available, ZERO)
         excess_loss = max(total_loss_available - income, ZERO)
         tax = (taxable * rate).quantize(Decimal("0.01"))
+        # Achado P0 do auditor: o crédito aproveitado não pode exceder o IR
+        # devido do ano (após prejuízos). Potencial por rendimento é uma
+        # coisa; o utilizado é o potencial limitado GLOBAMENTE pelo IR devido.
+        credit_used_total = min(credit_potencial, tax)
+        restante_cap = credit_used_total
+        for d in detail:
+            potencial = d.get("credit_potential")
+            if potencial:
+                uso = min(potencial, restante_cap)
+                d["credit_used"] = uso
+                restante_cap -= uso
+        credit_unused = credit_potencial - credit_used_total
         for registro in registros:
             if registro.remaining_brl > 0:
                 detail.insert(0, {
@@ -278,9 +296,11 @@ class TaxEngine:
             "loss_inherited_brl": loss_inherited,
             "taxable_brl": taxable,
             "tax_brl": tax,
-            "withholding_credit_brl": credit,
+            "withholding_credit_brl": credit_used_total,
+            "credit_potential_brl": credit_potencial,
+            "credit_unused_brl": credit_unused,
             "ineligible_foreign_tax_brl": ineligible_foreign_tax,
-            "tax_due_brl": max(tax - credit, ZERO),
+            "tax_due_brl": tax - credit_used_total,
             "loss_carryforward_brl": excess_loss,
             "detail": detail,
             "rule": rule,
