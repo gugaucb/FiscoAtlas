@@ -46,9 +46,10 @@ def test_resolver_vinculando_evento(conta_com_pendencia, client):
     url = reverse("import-issues", args=[conta.pk])
     resp = client.post(url, {"issue_pk": issue.pk, "acao": "vincular", "event_pk": evento.pk})
     issue.refresh_from_db()
+    # P1 auditor: vínculo é FK real (trilha auditável), não ID em string
+    assert issue.resolved_event_id == evento.pk
     assert issue.status == ImportIssue.STATUS_RESOLVED_IMPORTED
     assert issue.resolved_at is not None
-    assert str(evento.pk) in issue.resolution
 
 
 def test_vinculo_exige_mesma_conta(conta_com_pendencia, client):
@@ -91,6 +92,23 @@ def test_ignorar_com_justificativa(conta_com_pendencia, client):
     assert issue.status == ImportIssue.STATUS_RESOLVED_IGNORED
     assert issue.resolved_at is not None
     assert issue.resolution == "Transferência entre contas próprias"
+
+
+def test_vinculo_exige_evento_ativo(conta_com_pendencia):
+    """P1 auditor: evento desativado/corrigido não é lançamento fiscal
+    válido — não pode liberar o bloqueio da pendência."""
+    conta, issue = conta_com_pendencia
+    aapl = Asset.objects.create(ticker="MSFT", description="Microsoft", asset_type="FOREIGN_EQUITY")
+    evento = FinancialEvent.objects.create(
+        account=conta, asset=aapl, event_type="APORTE", active=False,
+        trade_date=date(2026, 2, 1), amount_usd=Decimal(100),
+        fx_rate=RATE, amount_brl=Decimal(500),
+    )
+    with pytest.raises(ValueError, match="deve estar ativo"):
+        issue.resolve_imported(evento)
+    issue.refresh_from_db()
+    assert issue.status == ImportIssue.STATUS_PENDING
+    assert issue.resolved_event_id is None
 
 
 def test_issue_ja_resolvido_nao_resolve_de_novo(conta_com_pendencia, client):
