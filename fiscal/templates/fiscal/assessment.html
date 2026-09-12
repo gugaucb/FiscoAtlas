@@ -15,13 +15,15 @@
 {% endfor %}
 {% endif %}
 
+{% if not snapshot or not snapshot.confirmed %}
 <form method="post" action="{% url 'close-year' year %}" style="margin-bottom:1rem">
   {% csrf_token %}
   <button type="submit" onclick="return confirm('Fechar o ano {{ year }}? O snapshot será salvo/atualizado com os valores atuais.')">
     Fechar ano {{ year }}
   </button>
 </form>
-{% if snapshot %}
+{% endif %}
+{% if snapshot and snapshot.confirmed %}
 <form method="post" action="{% url 'reopen-year' year %}" style="margin-bottom:1rem">
   {% csrf_token %}
   <input type="hidden" name="confirmar" value="{{ year }}">
