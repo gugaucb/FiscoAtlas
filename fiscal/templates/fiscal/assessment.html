@@ -30,7 +30,9 @@
     <tr><th scope="row">Perdas (BRL)</th><td class="money">{{ result.loss_brl }}</td></tr>
     <tr><th scope="row">Base tributável (BRL)</th><td class="money">{{ result.taxable_brl }}</td></tr>
     <tr><th scope="row">Imposto ({{ result.rule.brackets.0.rate }})</th><td class="money">{{ result.tax_brl }}</td></tr>
-    <tr><th scope="row">Crédito withholding EUA</th><td class="money">{{ result.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row">Crédito potencial</th><td class="money">{{ result.credit_potential_brl }}</td></tr>
+    <tr><th scope="row">Crédito utilizado (limitado ao imposto devido)</th><td class="money">{{ result.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row">Crédito não aproveitado</th><td class="money">{{ result.credit_unused_brl }}</td></tr>
     <tr><th scope="row"><strong>Imposto devido</strong></th><td class="money"><strong>{{ result.tax_due_brl }}</strong></td></tr>
     <tr><th scope="row">Prejuízo a compensar</th><td class="money">{{ result.loss_carryforward_brl }}</td></tr>
     </tbody>

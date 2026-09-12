@@ -218,7 +218,9 @@
     <tr><th scope="row">Prejuízo herdado de {{ report.year|add:"-1" }}</th><td class="money negative">-{{ report.income.loss_inherited_brl }}</td></tr>
     <tr><th scope="row">Base tributável</th><td class="money">{{ report.income.taxable_brl }}</td></tr>
     <tr><th scope="row">Imposto (15%)</th><td class="money">{{ report.income.tax_brl }}</td></tr>
-    <tr><th scope="row">Crédito withholding EUA</th><td class="money">{{ report.income.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row">Crédito potencial (elegível dentro do limite de 15%)</th><td class="money">{{ report.income.credit_potential_brl }}</td></tr>
+    <tr><th scope="row">Crédito utilizado (limitado ao imposto devido)</th><td class="money">{{ report.income.withholding_credit_brl }}</td></tr>
+    <tr><th scope="row">Crédito não aproveitado</th><td class="money">{{ report.income.credit_unused_brl }}</td></tr>
     <tr><th scope="row"><strong>Imposto devido</strong></th><td class="money"><strong>{{ report.income.tax_due_brl }}</strong></td></tr>
     <tr><th scope="row">Prejuízo a compensar</th><td class="money">{{ report.income.loss_carryforward_brl }}</td></tr>
     </tbody>

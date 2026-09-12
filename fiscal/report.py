@@ -185,7 +185,9 @@ class ReportService:
                 "limit_brl": (d["gross_brl"] * rate).quantize(Decimal("0.01")),
                 "withholding_brl": d["withholding_brl"],
                 "credit_used_brl": d["credit_used"],
-                "credit_unused_brl": (d["withholding_brl"] - d["credit_used"]).quantize(Decimal("0.01")),
+                # não aproveitado = elegível − utilizado (o inelegível é
+                # reportado à parte; achado P0 do auditor)
+                "credit_unused_brl": (d["credit_eligible_brl"] - d["credit_used"]).quantize(Decimal("0.01")),
                 "fx_income": d["fx_income"],
                 "fx_tax": d["fx_tax"],
                 "tax_payment_date": d["tax_payment_date"],
