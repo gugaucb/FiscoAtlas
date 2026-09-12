@@ -61,26 +61,38 @@ def test_sem_schema_relatorio_preliminar_com_aviso(ambiente):
 
 def test_schema_nao_homologado_marca_relatorio_preliminar(ambiente):
     DirpfSchema.objects.create(
-        filing_year=2026, schema_version="DIRPF/2026-v1",
+        filing_year=2027, schema_version="DIRPF/2027-v1",
         groups={}, countries={}, is_homologated=False,
     )
     report = _report(2026)
     assert report["dirpf"]["status"] == "PRELIMINAR"
-    assert report["dirpf"]["schema_version"] == "DIRPF/2026-v1"
+    assert report["dirpf"]["schema_version"] == "DIRPF/2027-v1"
 
 
 def test_schema_homologado_marca_relatorio_homologado(ambiente):
     DirpfSchema.objects.create(
-        filing_year=2026, schema_version="DIRPF/2026-v1",
+        filing_year=2027, schema_version="DIRPF/2027-v1",
         groups={}, countries={}, is_homologated=True,
     )
     report = _report(2026)
     assert report["dirpf"]["status"] == "HOMOLOGADO"
 
 
-def test_codigos_do_schema_sobrescrevem_defaults(ambiente):
+def test_schema_do_exercicio_errado_nao_homologa(ambiente):
+    """Auditor (P1): exercício = ano-calendário + 1. Um schema homologado do
+    exercício 2026 NÃO vale para o ano-calendário 2026 (exercício 2027);
+    ReportService(2026) homologa somente com DirpfSchema(filing_year=2027)."""
     DirpfSchema.objects.create(
         filing_year=2026, schema_version="DIRPF/2026-v1",
+        groups={}, countries={}, is_homologated=True,
+    )
+    report = _report(2026)
+    assert report["dirpf"]["status"] == "PRELIMINAR"
+
+
+def test_codigos_do_schema_sobrescrevem_defaults(ambiente):
+    DirpfSchema.objects.create(
+        filing_year=2027, schema_version="DIRPF/2027-v1",
         groups={"FOREIGN_EQUITY": "03/77", "FOREIGN_ETF": "03/02", "REIT": "03/03",
                 "FOREIGN_FUND": "03/99", "US_TREASURY": "04/99",
                 "FOREIGN_BOND": "04/99", "OTHER": "99/99"},
