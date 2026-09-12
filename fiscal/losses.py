@@ -60,6 +60,32 @@ class LossLedgerService:
         return sum((r.remaining_brl for r in cls.open_records(until_year)), ZERO)
 
     @classmethod
+    def open_records_at_start_of(cls, year: int) -> list:
+        """Ticket 29 (P0 do auditor): reconstrução HISTÓRICA do prejuízo
+        disponível NO INÍCIO do ano apurado — amount_brl menos compensações
+        de anos ANTERIORES ao ano. Compensações do próprio ano ou de anos
+        posteriores NÃO descontam: o resultado fiscal de um ano é
+        reproduzível independentemente de quando o saldo foi consumido.
+        remaining_brl é estado operacional do ledger, não fonte histórica.
+        Perda de source_event inativo (corrigido) não volta a ser válida."""
+        out = []
+        for record in LossRecord.objects.filter(
+            Q(source_event__isnull=True) | Q(source_event__active=True),
+            origin_year__lte=year - 1,
+        ).order_by("origin_year", "id"):
+            consumido = sum(
+                c.amount_brl for c in record.compensations.filter(year__lt=year)
+            )
+            saldo = (record.amount_brl - consumido).quantize(Decimal("0.01"))
+            if saldo > 0:
+                out.append({"record": record, "saldo_brl": saldo})
+        return out
+
+    @classmethod
+    def available_at_start_of(cls, year: int) -> Decimal:
+        return sum((r["saldo_brl"] for r in cls.open_records_at_start_of(year)), ZERO)
+
+    @classmethod
     def apply_compensation(cls, year: int, income_brl: Decimal) -> Decimal:
         """Consome os saldos FIFO até o rendimento do ano (idempotente).
 

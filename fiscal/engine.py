@@ -268,12 +268,16 @@ class TaxEngine:
                 })
 
         # Prejuízo herdado de anos anteriores (P&R IRPF: prejuízos são
-        # compensáveis nos anos seguintes). Fonte preferencial: Loss Ledger
-        # (RF-LOS-006, rastreável por ano/evento); fallback: scalar do
-        # AnnualAssessment anterior (dados legados). FIFO na compensação.
-        registros = LossLedgerService.open_records(self.year - 1)
+        # compensáveis nos anos seguintes). Ticket 29 (P0 do auditor):
+        # reconstrução HISTÓRICA — saldo no início do ano apurado
+        # (amount_brl − compensações de anos anteriores), NUNCA o
+        # remaining_brl mutável: o resultado do ano não muda porque
+        # compensações ocorreram nele ou depois dele. Fallback legado:
+        # scalar do AnnualAssessment anterior (quando o ledger não conhece
+        # os anos anteriores).
+        registros = LossLedgerService.open_records_at_start_of(self.year)
         if registros:
-            loss_inherited = sum((r.remaining_brl for r in registros), ZERO)
+            loss_inherited = sum((r["saldo_brl"] for r in registros), ZERO)
         elif not LossRecord.objects.filter(origin_year__lte=self.year - 1).exists():
             # fallback legado só quando o ledger NÃO conhece os anos
             # anteriores; se houver registros (mesmo filtrados — ex. perda
@@ -300,13 +304,14 @@ class TaxEngine:
                 d["credit_used"] = uso
                 restante_cap -= uso
         credit_unused = credit_potencial - credit_used_total
-        for registro in registros:
-            if registro.remaining_brl > 0:
+        for r in registros:
+            if r["saldo_brl"] > 0:
+                registro = r["record"]
                 detail.insert(0, {
                     "event": None, "kind": "loss_carryforward",
-                    "gross_brl": -registro.remaining_brl,
+                    "gross_brl": -r["saldo_brl"],
                     "description": (
-                        f"R$ {registro.remaining_brl} originados em {registro.origin_year}"
+                        f"R$ {r['saldo_brl']} originados em {registro.origin_year}"
                         + (f" — {registro.description}" if registro.description else "")
                     ),
                     "withholding_brl": ZERO, "credit_used": ZERO,

@@ -49,6 +49,17 @@ class CloseYearView(FriendlyErrorMixin, generic.View):
         from fiscal.reconciliation import AnnualReconciliationService
         from fiscal.validator import AnnualClosingValidator
 
+        # Ticket 29 (P0 do auditor): ano confirmado não pode ser fechado
+        # novamente — proteção no BACKEND (não confiar na UI). Reabrir
+        # explicitamente é o único caminho para novo fechamento.
+        if AnnualAssessment.objects.filter(year=year, confirmed=True).exists():
+            messages.error(
+                request,
+                f"O ano-calendário {year} já está fechado. Reabra o ano "
+                "antes de realizar novo fechamento.",
+            )
+            return redirect("assessment", year=year)
+
         try:
             with transaction.atomic():
                 # Auditoria-fiscal 12: primeiro a reconciliação (dados de
