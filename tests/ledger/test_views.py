@@ -52,6 +52,20 @@ def test_positions_page(client, setup):
     assert "AAPL" in html and "10" in html
 
 
+def test_positions_page_inclui_posicao_so_de_abertura(client, setup):
+    """Achado P1 do auditor (19): carteira carregada exclusivamente por
+    OpeningPosition (nenhum evento) é custódia real — aparece no relatório,
+    no CBE e na reconciliação, mas a tela /posicoes/ descobria contas e
+    ativos só por FinancialEvent e a omitia."""
+    acct, asset = setup
+    from ledger.models import OpeningPosition
+    OpeningPosition.objects.create(
+        account=acct, asset=asset, quantity=Decimal(100), total_cost_brl=Decimal("20000"),
+    )
+    html = client.get("/posicoes/").content.decode()
+    assert "AAPL" in html and "100" in html  # falha no código atual
+
+
 def test_cash_page_shows_balance(client, setup):
     acct, asset = setup
     with mock.patch("ledger.views.EventService._ptax_rate", return_value=Decimal("5")):
