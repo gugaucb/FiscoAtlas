@@ -36,7 +36,11 @@ class ReportService:
         (com aviso). HOMOLOGADO só com schema explicitamente homologado.
         A apuração matemática continua funcionando sem schema."""
         from fiscal.models import DirpfSchema
-        schema = DirpfSchema.objects.filter(filing_year=self.year).first()
+        # exercício = ano-calendário + 1: o schema que vale para o ano-
+        # calendário 2026 é o do exercício 2027 (mesma convenção do
+        # FilingRule do guia DARF); consultar o próprio ano usaria o schema
+        # de um exercício errado.
+        schema = DirpfSchema.objects.filter(filing_year=self.year + 1).first()
         if schema is None:
             return {
                 "groups": GRUPO_CODIGO, "countries": COUNTRY_RFB,
