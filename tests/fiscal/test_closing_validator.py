@@ -269,6 +269,39 @@ def test_dividendo_recebido_no_ano_seguinte_ativo_unknown_validado_em_2027(ambie
         AnnualClosingValidator(2027).validate_or_raise()
 
 
+def test_restituicao_identifica_origem_pelo_recebimento_do_rendimento(ambiente):
+    """P0 do auditor (restituições): o refund pertence ao ano do PRÓPRIO
+    trade_date (fato gerador do refund), mas o ANO DE ORIGEM do rendimento
+    restituído é o do recebimento — calculado pela trade_date do rendimento,
+    um dividendo negociado 31/12/2026 e recebido 02/01/2027 apontava origem
+    2026 em vez de 2027."""
+    conta = ambiente
+    ev = _dividendo_com_imposto(conta)
+    FinancialEvent.objects.filter(pk=ev.pk).update(
+        trade_date=date(2026, 12, 31), income_receipt_date=date(2027, 1, 2),
+    )
+    FinancialEvent.objects.create(
+        event_type="WITHHOLDING_REFUND", account=conta, asset=ev.asset,
+        trade_date=date(2028, 3, 1), amount_usd=Decimal(5), fx_rate=RATE,
+        amount_brl=Decimal(25), refund_of=ev,
+    )
+    AnnualAssessment.objects.create(
+        year=2027, rule_version="V2", income_brl=Decimal(0), loss_brl=Decimal(0),
+        taxable_brl=Decimal(0), tax_brl=Decimal(0),
+        withholding_credit_brl=Decimal(0), tax_due_brl=Decimal(0),
+        loss_carryforward_brl=Decimal(0),
+    )
+    with pytest.raises(ValidationError, match="(?i)retifica"):
+        AnnualClosingValidator(2028).validate_or_raise()
+    # a mensagem aponta 2027 (recebimento), nunca 2026 (operação)
+    try:
+        AnnualClosingValidator(2028).validate_or_raise()
+    except ValidationError as exc:
+        msgs = " ".join(str(m) for m in exc.messages)
+        assert "rendimento de 2027" in msgs
+        assert "rendimento de 2026" not in msgs
+
+
 def test_close_year_view_ok(ambiente, client):
     """Auditoria-fiscal 12: o fechamento agora exige reconciliação ANTES da
     validação fiscal — saldo documental confirmado confrontando o ledger."""

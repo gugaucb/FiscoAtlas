@@ -42,6 +42,14 @@ def fiscal_year_q(year: int, prefix: str = "") -> Q:
     return non_income | income_fiscal_year_q(year, prefix)
 
 
+def fiscal_year_of_event(event) -> int:
+    """Ano fiscal de um evento individual (mesma regra de fiscal_year_q,
+    para uso fora de queries — ex.: ano de origem de uma restituição)."""
+    if event.event_type in INCOME_EVENT_TYPES and event.income_receipt_date is not None:
+        return event.income_receipt_date.year
+    return event.trade_date.year
+
+
 # componente → (date_rule, quote_type BCB)
 COMPONENT_RULES = {
     "ACQUISITION": ("ACQUISITION_DATE", "VENDA"),

@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from fiscal.date_rules import TaxDateResolver, income_fiscal_year_q
+from fiscal.date_rules import TaxDateResolver, fiscal_year_q, income_fiscal_year_q
 from fiscal.foreign_tax import ForeignTaxCreditService
 from fiscal.losses import LossLedgerService
 from fiscal.models import AnnualAssessment, Profile, TaxRule
@@ -78,8 +78,8 @@ class TaxEngine:
 
     def _bloquear_ativos_nao_cobertos(self):
         qs = Asset.objects.filter(
-            Q(events__active=True, events__trade_date__year=self.year)
-            | Q(events__corrected_by__active=True, events__corrected_by__trade_date__year=self.year)
+            (Q(events__active=True) & fiscal_year_q(self.year, prefix="events__"))
+            | (Q(events__corrected_by__active=True) & fiscal_year_q(self.year, prefix="events__corrected_by__"))
         ).distinct()
         bloqueados = [
             a.ticker for a in qs
