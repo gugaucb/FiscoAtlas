@@ -156,6 +156,15 @@ class FinancialEvent(models.Model):
     def __str__(self):
         return f"{self.event_type} {self.trade_date} {self.asset or ''} {self.amount_usd}"
 
+    def save(self, *args, **kwargs):
+        # Ticket 25 (P0 do auditor): evento persistido em ano fechado não
+        # pode ser modificado (ex.: desativação) até a reabertura. Criação
+        # é guardada no EventService (valida os dois anos na correção).
+        if self.pk:
+            from fiscal.closing import assert_evento_em_ano_aberto
+            assert_evento_em_ano_aberto(self)
+        super().save(*args, **kwargs)
+
     @property
     def foreign_tax_total_usd(self) -> Decimal:
         """Soma dos impostos pagos no exterior (fonte: ForeignTaxPayment)."""
@@ -213,6 +222,13 @@ class ForeignTaxPayment(models.Model):
             raise ValueError("tax_usd do pagamento de imposto no exterior deve ser positivo")
 
     def save(self, *args, **kwargs):
+        # Ticket 25: o imposto pertence fiscalmente ao ano do RENDIMENTO
+        # vinculado (income_receipt_date), não à data do pagamento.
+        from fiscal.closing import ano_fiscal_de, assert_fiscal_year_open
+        ev = self.financial_event
+        assert_fiscal_year_open(ano_fiscal_de(
+            ev.event_type, ev.trade_date, ev.income_receipt_date,
+        ))
         self.full_clean()
         super().save(*args, **kwargs)
 

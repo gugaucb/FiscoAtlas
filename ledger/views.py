@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import generic
@@ -39,7 +40,7 @@ class EventCreateView(generic.CreateView):
         data["asset"] = data.pop("asset_ticker", None)
         try:
             EventService().record(data)
-        except ValueError as e:
+        except (ValueError, ValidationError) as e:
             form.add_error(None, str(e))
             return self.form_invalid(form)
         messages.success(self.request, "Evento registrado.")
@@ -47,13 +48,18 @@ class EventCreateView(generic.CreateView):
 
 
 class EventDeactivateView(generic.View):
-    """Soft delete: desativa o evento; ele deixa de ser contabilizado."""
+    """Soft delete: desativa o evento; ele deixa de ser contabilizado.
+    Ticket 25: ano fechado bloqueia a desativação até a reabertura."""
 
     def post(self, request, pk):
         ev = FinancialEvent.objects.filter(pk=pk, active=True).first()
         if ev:
-            ev.active = False
-            ev.save(update_fields=["active"])
+            try:
+                ev.active = False
+                ev.save(update_fields=["active"])
+            except ValidationError as e:
+                messages.error(request, "; ".join(e.messages))
+                return redirect("event-list")
             messages.success(request, "Evento desativado; deixou de ser contabilizado.")
         return redirect("event-list")
 
@@ -78,7 +84,7 @@ class EventCorrectView(generic.UpdateView):
         data["corrects"] = self.get_object()
         try:
             EventService().record(data)
-        except ValueError as e:
+        except (ValueError, ValidationError) as e:
             form.add_error(None, str(e))
             return self.form_invalid(form)
         messages.success(self.request, "Correção registrada; evento original desativado.")
@@ -98,7 +104,11 @@ class ForeignTaxPaymentEditView(generic.UpdateView):
         return ctx
 
     def form_valid(self, form):
-        form.save()
+        try:
+            form.save()
+        except ValidationError as e:
+            form.add_error(None, "; ".join(e.messages))
+            return self.form_invalid(form)
         messages.success(self.request, "Imposto no exterior atualizado; alteração registrada na trilha de auditoria.")
         return redirect(self.success_url)
 
