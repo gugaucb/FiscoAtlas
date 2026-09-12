@@ -157,6 +157,44 @@ def test_revisao_pendente_bloqueia_com_orientacao(ambiente):
         AnnualReconciliationService(2026).run_or_raise()
 
 
+def test_carteira_so_com_posicao_de_abertura_e_reconciliada(ambiente):
+    """P0 do auditor: _conta_relevante descobria contas por eventos/caixa e os
+    ativos por FinancialEvent — carteira carregada SÓ por OpeningPosition
+    (nenhum evento em 2026, caixa zero) ficava fora da confrontação com o
+    extrato. A custódia do ledger inclui a posição de abertura."""
+    from ledger.models import OpeningPosition
+    conta = ambiente
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
+    OpeningPosition.objects.create(
+        account=conta, asset=aapl, quantity=Decimal(100), total_cost_brl=Decimal(10000),
+    )
+    # sem saldo documental → bloqueia (conta passou a ser relevante)
+    with pytest.raises(Exception, match="(?i)saldo documental"):
+        AnnualReconciliationService(2026).run_or_raise()
+    # posição divergente do extrato → bloqueia com valores
+    _doc(conta, Decimal(0), positions=[{"ticker": "AAPL", "quantity": "90"}])
+    with pytest.raises(Exception, match="(?i)100.*90|90.*100"):
+        AnnualReconciliationService(2026).run_or_raise()
+    # conciliado → passa
+    DocumentedBalance.objects.filter(
+        account=conta, reference_date=date(2026, 12, 31),
+    ).update(positions=[{"ticker": "AAPL", "quantity": "100"}])
+    AnnualReconciliationService(2026).run_or_raise()  # não levanta
+
+
+def test_posicao_de_abertura_do_ano_seguinte_nao_e_relevante(ambiente):
+    """OpeningPosition com reference_date após 31/12 do ano fechado não torna
+    a conta relevante para a reconciliação daquele ano."""
+    from ledger.models import OpeningPosition
+    conta = ambiente
+    aapl = Asset.objects.create(ticker="AAPL", description="Apple", asset_type="FOREIGN_EQUITY")
+    OpeningPosition.objects.create(
+        account=conta, asset=aapl, quantity=Decimal(100), total_cost_brl=Decimal(10000),
+        reference_date=date(2027, 1, 2),
+    )
+    AnnualReconciliationService(2026).run_or_raise()  # não levanta
+
+
 def test_fechamento_executa_reconciliacao_antes_da_validacao_fiscal(client, ambiente):
     """CloseYearView: reconciliação → validação fiscal → apuração → snapshot.
     Sem saldo documental confirmado, o fechamento falha ANTES de apurar."""

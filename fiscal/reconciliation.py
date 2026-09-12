@@ -17,10 +17,14 @@ from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from fiscal.date_rules import income_fiscal_year_q
 from ledger.cash import CashLedgerService
-from ledger.models import Asset, BrokerAccount, DocumentedBalance, FinancialEvent, ImportIssue
+from ledger.models import (
+    Asset, BrokerAccount, DocumentedBalance, FinancialEvent, ImportIssue,
+    OpeningPosition,
+)
 from ledger.position import PositionService
 
 TOL = Decimal("0.01")
@@ -100,7 +104,11 @@ class AnnualReconciliationService:
             if documentado is None or not documentado.confirmed:
                 continue  # já reportado em _checar_caixa
             doc_por_ticker = {str(p["ticker"]).upper(): Decimal(str(p["quantity"])) for p in (documentado.positions or [])}
-            for asset in Asset.objects.filter(events__account=conta, events__active=True).distinct():
+            # auditor P0: carteira existente SÓ por posição de abertura também
+            # é custódia do ledger — confronta com o extrato mesmo sem eventos
+            for asset in Asset.objects.filter(
+                Q(events__account=conta, events__active=True) | Q(opening_positions__account=conta),
+            ).distinct():
                 qty = PositionService().position(conta, asset, until=data_base)["quantity"]
                 if qty <= 0 and asset.ticker not in doc_por_ticker:
                     continue
@@ -137,10 +145,14 @@ class AnnualReconciliationService:
                 )
 
     def _conta_relevante(self, conta, data_base) -> bool:
-        """Só contas com atividade no ano (ou saldo) precisam de reconciliação."""
+        """Só contas com atividade no ano (ou saldo, ou custódia carregada por
+        posição de abertura) precisam de reconciliação."""
         return (
             FinancialEvent.objects.filter(
                 account=conta, active=True, trade_date__year=self.year,
+            ).exists()
+            or OpeningPosition.objects.filter(
+                account=conta, reference_date__lte=data_base,
             ).exists()
             or CashLedgerService().balance(conta, until=data_base) != 0
         )
