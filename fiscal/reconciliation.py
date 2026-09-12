@@ -87,7 +87,7 @@ class AnnualReconciliationService:
     # ------------------------------------------------------------ (2) caixa
     def _checar_caixa(self):
         data_base = date(self.year, 12, 31)
-        for conta in BrokerAccount.objects.filter(active=True):
+        for conta in BrokerAccount.objects.all():
             if not self._conta_relevante(conta, data_base):
                 continue
             documentado = DocumentedBalance.objects.filter(
@@ -111,7 +111,7 @@ class AnnualReconciliationService:
     # ------------------------------------------------------------ (3) posições
     def _checar_posicoes(self):
         data_base = date(self.year, 12, 31)
-        for conta in BrokerAccount.objects.filter(active=True):
+        for conta in BrokerAccount.objects.all():
             if not self._conta_relevante(conta, data_base):
                 continue
             documentado = DocumentedBalance.objects.filter(

@@ -85,6 +85,25 @@ class BrokerAccount(models.Model):
     def __str__(self):
         return self.name or f"{self.broker_name} ({self.account_number})"
 
+    @classmethod
+    def historico_do_ano(cls, year: int, yearend) -> list:
+        """P0 do auditor (24): desativar uma conta não apaga o passado
+        fiscal dela. Contas ativas entram sempre; desativadas entram nos
+        históricos do ano-calendário se tiverem atividade (eventos ativos
+        do ano, posição de abertura ou custódia na data-base). Formulários
+        de entrada continuam restritos a contas ativas."""
+        ativas = list(cls.objects.filter(active=True))
+        inativas = [
+            c for c in cls.objects.filter(active=False)
+            if FinancialEvent.objects.filter(
+                account=c, active=True, trade_date__year=year,
+            ).exists()
+            or OpeningPosition.objects.filter(
+                account=c, reference_date__lte=yearend,
+            ).exists()
+        ]
+        return sorted(ativas + inativas, key=lambda c: (c.broker_name, c.pk))
+
 
 FOREIGN_TAX_STATES = [
     ("UNDECLARED", "Não declarado"),

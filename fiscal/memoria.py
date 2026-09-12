@@ -1,5 +1,6 @@
 import io
 
+from datetime import date
 from decimal import Decimal
 
 from django.db.models import Q
@@ -26,7 +27,7 @@ def build_memoria(year: int) -> dict:
     Auditoria-fiscal 03: gerada por CONTA + ativo (abertura e custo nunca somam
     entre corretoras)."""
     assets_out = []
-    for account in BrokerAccount.objects.filter(active=True).order_by("broker_name", "pk"):
+    for account in BrokerAccount.historico_do_ano(year, date(year, 12, 31)):
         for asset in Asset.objects.filter(active=True).order_by("ticker"):
             assets_out.append(
                 _memoria_conta_ativo(year, account, asset)
