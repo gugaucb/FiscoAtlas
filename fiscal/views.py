@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django import forms
 from django.http import HttpResponse
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views import generic
 
@@ -83,7 +84,7 @@ class ReopenYearView(FriendlyErrorMixin, generic.View):
 
         from fiscal.models import AnnualAssessment
 
-        if AnnualAssessment.objects.filter(year__gt=year).exists():
+        if AnnualAssessment.objects.filter(year__gt=year, confirmed=True).exists():
             messages.error(
                 request,
                 f"Não é possível reabrir {year}: existem anos posteriores "
@@ -93,15 +94,23 @@ class ReopenYearView(FriendlyErrorMixin, generic.View):
         if (request.POST.get("confirmar") or "") != str(year):
             messages.error(request, "Confirmação da reabertura ausente ou inválida.")
             return redirect("assessment", year=year)
-        apagados, _ = AnnualAssessment.objects.filter(year=year).delete()
+        # Ticket 26 (P0 do auditor): a reabertura devolve o prejuízo
+        # consumido no fechamento — compensações do ano retornam ao saldo
+        # de origem e o snapshot é removido na MESMA transação (indivisível).
+        from fiscal.losses import LossLedgerService
+        with transaction.atomic():
+            devolvido = LossLedgerService.revert_compensations(year)
+            apagados, _ = AnnualAssessment.objects.filter(year=year).delete()
         if not apagados:
             messages.warning(request, f"Ano {year} já está em aberto.")
         else:
-            messages.warning(
-                request,
+            msg = (
                 f"Ano {year} reaberto — snapshot de fechamento removido. "
-                "Refaça a apuração e feche o ano novamente.",
+                "Refaça a apuração e feche o ano novamente."
             )
+            if devolvido:
+                msg += f" Prejuízo devolvido ao saldo: R$ {devolvido}."
+            messages.warning(request, msg)
         return redirect("assessment", year=year)
 
 
