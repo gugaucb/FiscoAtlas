@@ -21,6 +21,15 @@
     Fechar ano {{ year }}
   </button>
 </form>
+{% if snapshot %}
+<form method="post" action="{% url 'reopen-year' year %}" style="margin-bottom:1rem">
+  {% csrf_token %}
+  <input type="hidden" name="confirmar" value="{{ year }}">
+  <button type="submit" onclick="return confirm('Reabrir o ano {{ year }}? O snapshot de fechamento será apagado e a apuração refeita.')">
+    Reabrir ano {{ year }}
+  </button>
+</form>
+{% endif %}
 
 <div class="card">
   <h2>Resultado consolidado</h2>

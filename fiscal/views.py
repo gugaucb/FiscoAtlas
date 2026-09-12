@@ -70,6 +70,41 @@ class CloseYearView(FriendlyErrorMixin, generic.View):
         return redirect("assessment", year=year)
 
 
+class ReopenYearView(FriendlyErrorMixin, generic.View):
+    """P0 do auditor (23): reabertura formal do ano pela aplicação — nada
+    de SQL manual. Bloqueada se algum ano POSTERIOR está fechado (reabrir
+    um ano anterior desfaria consumos de prejuízo em cascata): reabra do
+    mais recente para o mais antigo. Apaga o snapshot do ano; a trilha
+    fica na mensagem e o relatório dos anos seguintes volta a exibir o
+    aviso de "ano anterior não fechado"."""
+
+    def post(self, request, year):
+        from django.contrib import messages
+
+        from fiscal.models import AnnualAssessment
+
+        if AnnualAssessment.objects.filter(year__gt=year).exists():
+            messages.error(
+                request,
+                f"Não é possível reabrir {year}: existem anos posteriores "
+                "fechados. Reabra do mais recente para o mais antigo.",
+            )
+            return redirect("assessment", year=year)
+        if (request.POST.get("confirmar") or "") != str(year):
+            messages.error(request, "Confirmação da reabertura ausente ou inválida.")
+            return redirect("assessment", year=year)
+        apagados, _ = AnnualAssessment.objects.filter(year=year).delete()
+        if not apagados:
+            messages.warning(request, f"Ano {year} já está em aberto.")
+        else:
+            messages.warning(
+                request,
+                f"Ano {year} reaberto — snapshot de fechamento removido. "
+                "Refaça a apuração e feche o ano novamente.",
+            )
+        return redirect("assessment", year=year)
+
+
 class FechamentoPtaxForm(forms.Form):
     rate = forms.DecimalField(
         label="PTAX venda 31/12", max_digits=10, decimal_places=6, min_value=Decimal("0.01"),

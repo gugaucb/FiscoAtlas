@@ -8,6 +8,7 @@ urlpatterns = [
     path("documentar-saldos/", reconciliation_views.DocumentedBalanceView.as_view(), name="documented-balance"),
     path("apuracao/<int:year>/", views.AssessmentView.as_view(), name="assessment"),
     path("apuracao/<int:year>/fechar/", views.CloseYearView.as_view(), name="close-year"),
+    path("apuracao/<int:year>/reabrir/", views.ReopenYearView.as_view(), name="reopen-year"),
     path("relatorio/<int:year>/", views.ReportView.as_view(), name="report"),
     path("relatorio/<int:year>/ptax-fechamento/", views.FechamentoPtaxView.as_view(), name="report-ptax"),
     path("relatorio/<int:year>/pdf", views.ReportPdfView.as_view(), name="report-pdf"),
